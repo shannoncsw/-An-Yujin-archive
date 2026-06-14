@@ -2,13 +2,12 @@ import { useState, useMemo, useEffect } from "react";
 
 // ================================================================
 //  SECTION A · YOUR SETTINGS
-const IDOL_NAME      = "안유진 · Ahn Yujin";                    // your idol's name
+const IDOL_NAME      = "안유진 · An Yujin";                    // your idol's name
 //  Everything else is handled automatically.
 // ================================================================
 const SUPABASE_URL   = "https://YOUR_PROJECT_ID.supabase.co";  // from Supabase dashboard
 const SUPABASE_KEY   = "YOUR_ANON_KEY_HERE";                   // from Supabase dashboard
 const ADMIN_PASSWORD = "archive2025";                           // pick any password you want
-const IDOL_NAME      = "안유진 · An Yujin";                    // your idol's name
 
 // ================================================================
 //  SECTION B · CATEGORIES

@@ -5,8 +5,8 @@ import { useState, useMemo, useEffect } from "react";
 const IDOL_NAME      = "안유진 · An Yujin";                    // your idol's name
 //  Everything else is handled automatically.
 // ================================================================
-const SUPABASE_URL   = "https://YOUR_PROJECT_ID.supabase.co";  // from Supabase dashboard
-const SUPABASE_KEY   = "YOUR_ANON_KEY_HERE";                   // from Supabase dashboard
+const SUPABASE_URL   = "https://nbnpkswhasujaalynzgi.supabase.co/rest/v1/";  // from Supabase dashboard
+const SUPABASE_KEY   = "sb_publishable_hoJJ99pfIBe0l0ehieAo8g_Ekxz2CW2";                   // from Supabase dashboard
 const ADMIN_PASSWORD = "@2Aab5e1982007";                           // pick any password you want
 
 // ================================================================

@@ -7,7 +7,7 @@ const IDOL_NAME      = "안유진 · An Yujin";                    // your idol'
 // ================================================================
 const SUPABASE_URL   = "https://YOUR_PROJECT_ID.supabase.co";  // from Supabase dashboard
 const SUPABASE_KEY   = "YOUR_ANON_KEY_HERE";                   // from Supabase dashboard
-const ADMIN_PASSWORD = "archive2025";                           // pick any password you want
+const ADMIN_PASSWORD = "@2Aab5e1982007";                           // pick any password you want
 
 // ================================================================
 //  SECTION B · CATEGORIES

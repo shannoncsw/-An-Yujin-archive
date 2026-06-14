@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 
 // ================================================================
 //  SECTION A · YOUR SETTINGS
 const IDOL_NAME      = "안유진 · An Yujin";                    // your idol's name
+const IDOL_IMAGE     = "https://www.pinterest.com/pin/1061231099709786646/"; // paste your favorite Yujin square image URL here!
 //  Everything else is handled automatically.
 // ================================================================
 const SUPABASE_URL   = "https://nbnpkswhasujaalynzgi.supabase.co";  // from Supabase dashboard
@@ -11,10 +12,6 @@ const ADMIN_PASSWORD = "@2Aab5e1982007";                           // pick any p
 
 // ================================================================
 //  SECTION B · CATEGORIES
-//  These are the activity types you can filter by.
-//  You can rename, add, or remove any of these.
-//  Each has a "color" (for the filter button) and "dot" (for the
-//  colored stripe on the left side of each card).
 // ================================================================
 const CATEGORIES = [
   { id: "all",       label: "All",          color: "#E2E2E2", dot: "#444455" },
@@ -29,8 +26,6 @@ const CATEGORIES = [
 
 // ================================================================
 //  SECTION C · PLATFORMS
-//  The streaming/social platforms you can link to.
-//  Each has a label, a text color, and a background color.
 // ================================================================
 const PLATFORMS = {
   youtube:   { label: "YouTube",    color: "#FF5555", bg: "rgba(255,85,85,0.12)"  },
@@ -42,40 +37,16 @@ const PLATFORM_KEYS = Object.keys(PLATFORMS);
 
 // ================================================================
 //  SECTION D · DEMO DATA
-//  This is fake data just for the preview so you can see how the
-//  app looks before connecting Supabase. Once you set up Supabase,
-//  all your real entries live in the database — not here.
 // ================================================================
 const DEMO_DATA = [
-  { id:1,  date:"2025-02-28", title:"IVE – 'Accendio' MV",                           category:"music",    era:"Accendio",   description:"Title track MV from IVE's 2nd full album 'Accendio'. Yujin center scenes went viral immediately. MV surpassed 20M views in under 48hrs.", platforms:[{type:"youtube",url:"#",label:"MV"},{type:"twitter",url:"#",label:"Fancam thread"}],   tags:["MV","Accendio","IVE","title track","2nd full album"] },
-  { id:2,  date:"2025-02-20", title:"Accendio Showcase – Yujin Focus",                category:"music",    era:"Accendio",   description:"IVE 2nd full album showcase. Yujin's speech went viral. Full group performance of all title tracks.",                                                           platforms:[{type:"youtube",url:"#",label:"Showcase VOD"},{type:"weverse",url:"#",label:"Live"}],   tags:["showcase","Accendio","speech","IVE"] },
-  { id:3,  date:"2025-01-15", title:"Knowing Bros – IVE Episode",                     category:"reality",  era:"Accendio",   description:"IVE as guests on Knowing Bros. Yujin's iconic moments: the ad-lib battle and the transfer student game. Clipped widely on TikTok.",                              platforms:[{type:"youtube",url:"#",label:"Full Ep"},{type:"twitter",url:"#",label:"Clips"}],       tags:["Knowing Bros","variety","IVE","iconic"] },
-  { id:4,  date:"2024-12-31", title:"MBC Gayo Daejejeon – IVE Stage",                 category:"music",    era:"Either Way", description:"Year-end performance. IVE performed a medley including 'Either Way' and 'Baddie'. Yujin's ending fairy pose trended on Twitter.",                  platforms:[{type:"youtube",url:"#",label:"Stage"},{type:"twitter",url:"#",label:"Fancams"}],       tags:["Gayo","year-end","MBC","Either Way","performance"] },
-  { id:5,  date:"2024-12-25", title:"Weverse Christmas Solo Live",                    category:"social",   era:"Either Way", description:"2+ hour solo Christmas Weverse live. Talked about 2024 highlights, sang festive songs, surprised fans.",                                                             platforms:[{type:"weverse",url:"#",label:"VOD"},{type:"twitter",url:"#",label:"Clips"}],           tags:["vlive","Christmas","Weverse","solo live","fan talk"] },
-  { id:6,  date:"2024-11-01", title:"IVE – 'Either Way' MV",                         category:"music",    era:"Either Way", description:"Emotional ballad MV. Complete image switch from Baddie era. Yujin's acting praised widely. Currently 50M+ views.",                                               platforms:[{type:"youtube",url:"#",label:"MV"},{type:"instagram",url:"#",label:"Stills"}],         tags:["MV","Either Way","IVE","ballad"] },
-  { id:7,  date:"2024-09-14", title:"IVE SHOW WHAT I HAVE – Seoul Concert",          category:"concert",  era:"Baddie",     description:"IVE's first solo concert tour. Yujin's solo stage was an acoustic 'ELEVEN'. Fan accounts call it the highlight of the night.",                          platforms:[{type:"twitter",url:"#",label:"Setlist"},{type:"weverse",url:"#",label:"Fancams"}],     tags:["SHOW WHAT I HAVE","concert","Seoul","solo stage","tour"] },
-  { id:8,  date:"2024-08-22", title:"IVE – 'Baddie' MV",                               category:"music",    era:"Baddie",     description:"Powerful concept MV. Yujin's blonde hair for this era became iconic. MV hit 30M views in 24hrs. Choreography widely covered.",                                     platforms:[{type:"youtube",url:"#",label:"MV"},{type:"twitter",url:"#",label:"Fancam"}],           tags:["MV","Baddie","IVE","blonde","concept"] },
-  { id:9,  date:"2024-07-10", title:"McDonald's Korea x Yujin CF",                   category:"cf",       era:"Baddie",     description:"Solo CF for McDonald's Korea summer campaign. Multiple cuts: 15s, 30s, 60s. BTS content released on IG.",                                                          platforms:[{type:"youtube",url:"#",label:"CF"},{type:"instagram",url:"#",label:"BTS"}],            tags:["McDonald's","CF","solo","summer"] },
-  { id:10, date:"2024-06-01", title:"IVE Summer Package 2024 – Bali",                  category:"group",    era:"Baddie",     description:"IVE official summer package filmed in Bali. Yujin's volleyball game moment clipped widely on Weverse.",                                                           platforms:[{type:"weverse",url:"#",label:"BTS Clips"},{type:"youtube",url:"#",label:"Trailer"}],   tags:["summer package","Bali","IVE","group","DVD"] },
-  { id:11, date:"2024-04-12", title:"Running Man – Ep. 700 Special",                   category:"reality",  era:"I AM",       description:"700th episode idol special. Yujin's race mission moments generated huge fan content online.",                                                                       platforms:[{type:"youtube",url:"#",label:"Clips"},{type:"naver",url:"#",label:"Full Ep"}],         tags:["Running Man","variety","ep700","iconic"] },
-  { id:12, date:"2024-03-27", title:"IVE – 'I AM' MV",                                  category:"music",    era:"I AM",       description:"Empowerment concept MV from IVE's 1st full album 'I've IVE'. Yujin's center moments praised. Currently 150M+ views.",                                  platforms:[{type:"youtube",url:"#",label:"MV"},{type:"twitter",url:"#",label:"Reaction thread"}],  tags:["MV","I AM","Ive IVE","1st full album","IVE"] },
-  { id:13, date:"2024-02-14", title:"Lotte Duty Free Valentine's CF",                 category:"cf",       era:"I AM",       description:"Valentine's campaign CF for Lotte Duty Free. Solo and group cuts both released. Yujin's individual version charmed fans worldwide.",                            platforms:[{type:"youtube",url:"#",label:"CF"},{type:"instagram",url:"#",label:"Stills"}],         tags:["Lotte","CF","Valentine","Duty Free"] },
-  { id:14, date:"2023-12-31", title:"KBS Gayo Daechukje – IVE Stage",                  category:"music",    era:"Kitsch",     description:"Year-end KBS performance. IVE performed Kitsch and After LIKE. Yujin's look became a top trending topic.",                                                         platforms:[{type:"youtube",url:"#",label:"Stage"},{type:"twitter",url:"#",label:"Fancams"}],       tags:["Gayo","year-end","KBS","Kitsch","After LIKE"] },
-  { id:15, date:"2023-08-21", title:"IVE – 'Kitsch' MV",                               category:"music",    era:"Kitsch",     description:"Retro-inspired concept. First time IVE had a fan-participatory MV concept. Yujin's vocal part in the bridge highlighted widely.",                                   platforms:[{type:"youtube",url:"#",label:"MV"},{type:"instagram",url:"#",label:"Concept photos"}], tags:["MV","Kitsch","IVE","retro"] },
+  { id:1,  date:"2025-02-28", title:"IVE – 'Accendio' MV",                           category:"music",    era:"Accendio",   description:"Title track MV from IVE's 2nd full album 'Accendio'. Yujin center scenes went viral immediately. MV surpassed 20M views in under 48hrs.", platforms:[{type:"youtube",url:"#",label:"MV"},{type:"twitter",url:"#",label:"Fancam thread"}],   tags:["MV","Accendio","IVE","title track","2nd full album"], media: [] },
+  { id:2,  date:"2025-02-20", title:"Accendio Showcase – Yujin Focus",                category:"music",    era:"Accendio",   description:"IVE 2nd full album showcase. Yujin's speech went viral. Full group performance of all title tracks.",                                                           platforms:[{type:"youtube",url:"#",label:"Showcase VOD"},{type:"weverse",url:"#",label:"Live"}],   tags:["showcase","Accendio","speech","IVE"], media: [] },
+  { id:3,  date:"2025-01-15", title:"Knowing Bros – IVE Episode",                     category:"reality",  era:"Accendio",   description:"IVE as guests on Knowing Bros. Yujin's iconic moments: the ad-lib battle and the transfer student game. Clipped widely on TikTok.",                              platforms:[{type:"youtube",url:"#",label:"Full Ep"},{type:"twitter",url:"#",label:"Clips"}],       tags:["Knowing Bros","variety","IVE","iconic"], media: [] }
 ];
 
-// ================================================================
-//  SECTION E · SUPABASE HELPERS
-//  These are the two functions that talk to your database.
-//  "fetchEntries" loads all entries. "saveEntry" adds a new one.
-//  You don't need to edit these — they just use the URL and KEY
-//  you set at the top.
-// ================================================================
-
-// Detects if you're still using placeholder credentials
+// 检测是否正在使用占位符
 const IS_DEMO = SUPABASE_URL.includes("YOUR_PROJECT_ID");
 
-// Loads all entries from the database, newest date first
 async function fetchEntries() {
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/entries?select=*&order=date.desc`,
@@ -85,7 +56,6 @@ async function fetchEntries() {
   return res.json();
 }
 
-// Saves one new entry to the database
 async function saveEntry(entry) {
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/entries`,
@@ -104,76 +74,188 @@ async function saveEntry(entry) {
   return res.json();
 }
 
-// ================================================================
-//  SECTION F · SMALL HELPER FUNCTIONS
-//  Tiny utilities used throughout the component.
-// ================================================================
 const MONTH_NAMES = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-// Finds a category's color/label by its id (e.g. "music")
 function getCat(id) { return CATEGORIES.find(c => c.id === id) || CATEGORIES[1]; }
 
-// Turns "2024-11-15" into "15 Nov 2024"
 function niceDate(d) {
   const [y,m,day] = d.split("-");
   return `${parseInt(day)} ${MONTH_NAMES[parseInt(m)]} ${y}`;
 }
 
-// Groups a flat list of entries into { year, month, entries[] }
 function groupByMonth(entries) {
   const map = {};
   entries.forEach(e => {
-    const key = e.date.slice(0,7); // "2024-11"
+    const key = e.date.slice(0,7);
     if (!map[key]) map[key] = [];
     map[key].push(e);
   });
   return Object.entries(map)
-    .sort(([a],[b]) => b.localeCompare(a)) // newest first
+    .sort(([a],[b]) => b.localeCompare(a))
     .map(([key, list]) => ({ year:key.slice(0,4), month:key.slice(5,7), entries:list }));
 }
 
 // ================================================================
+//  MEDIA GRID + LIGHTBOX COMPONENT (Instagram Style + More)
+// ================================================================
+const MediaGrid = ({ mediaUrls }) => {
+  const [activeIndex, setActiveIndex] = useState(null);
+
+  if (!mediaUrls || mediaUrls.length === 0 || mediaUrls[0] === "") return null;
+
+  const getYouTubeId = (url) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const handlePrev = (e) => {
+    e.stopPropagation();
+    if (activeIndex > 0) setActiveIndex(activeIndex - 1);
+  };
+
+  const handleNext = (e) => {
+    e.stopPropagation();
+    if (activeIndex < mediaUrls.length - 1) setActiveIndex(activeIndex + 1);
+  };
+
+  return (
+    <div style={{ marginTop: 14, marginBottom: 6 }}>
+      {/* 1. INSTAGRAM GRID (3 Columns Max) */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+        {mediaUrls.slice(0, 3).map((url, index) => {
+          const ytId = getYouTubeId(url);
+          const thumbnailUrl = ytId 
+            ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` 
+            : url.trim();
+
+          const isLastVisible = index === 2;
+          const remainingCount = mediaUrls.length - 3;
+
+          return (
+            <div 
+              key={index} 
+              onClick={(e) => { e.stopPropagation(); setActiveIndex(index); }}
+              style={{
+                position: "relative",
+                aspectRatio: "1 / 1",
+                background: "#121225",
+                borderRadius: 8,
+                overflow: "hidden",
+                cursor: "pointer",
+                border: "1px solid #202035",
+              }}
+            >
+              <img 
+                src={thumbnailUrl} 
+                alt="Thumbnail" 
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                onError={(e) => { e.target.src = 'https://placehold.co/400x400?text=Image+Error'; }}
+              />
+
+              {ytId && !isLastVisible && (
+                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.25)" }}>
+                  <div style={{ background: "#A855F7", padding: 8, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg style={{ width: 14, height: 14, fill: "#FFF" }} viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                  </div>
+                </div>
+              )}
+
+              {isLastVisible && remainingCount > 0 && (
+                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#FFF", fontWeight: "bold" }}>
+                  <span style={{ fontSize: 16 }}>+{remainingCount}</span>
+                  <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.05em", color: "#B0B0C5" }}>More</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 2. THE LIGHTBOX SLIDESHOW MODAL */}
+      {activeIndex !== null && (
+        <div 
+          style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.92)", padding: 16, backdropFilter: "blur(8px)" }}
+          onClick={() => setActiveIndex(null)}
+        >
+          <button 
+            style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: "#A0A0C0", fontSize: 36, cursor: "pointer", zIndex: 120 }}
+            onClick={() => setActiveIndex(null)}
+          >
+            ×
+          </button>
+
+          {activeIndex > 0 && (
+            <button 
+              onClick={handlePrev}
+              style={{ position: "absolute", left: 16, zIndex: 110, background: "rgba(25,25,40,0.6)", border: "none", color: "#FFF", padding: "12px 16px", borderRadius: "50%", fontSize: 18, cursor: "pointer" }}
+            >
+              ❮
+            </button>
+          )}
+
+          {activeIndex < mediaUrls.length - 1 && (
+            <button 
+              onClick={handleNext}
+              style={{ position: "absolute", right: 16, zIndex: 110, background: "rgba(25,25,40,0.6)", border: "none", color: "#FFF", padding: "12px 16px", borderRadius: "50%", fontSize: 18, cursor: "pointer" }}
+            >
+              ❯
+            </button>
+          )}
+
+          <div 
+            style={{ position: "relative", width: "100%", maxWidth: 860, aspectRatio: "16 / 9", display: "flex", alignItems: "center", justifyContent: "center", background: "#000", borderRadius: 12, overflow: "hidden" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {getYouTubeId(mediaUrls[activeIndex]) ? (
+              <iframe 
+                src={`https://www.youtube.com/embed/${getYouTubeId(mediaUrls[activeIndex])}?autoplay=1`}
+                style={{ width: "100%", height: "100%", border: "none" }} 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowFullScreen
+              />
+            ) : (
+              <img 
+                src={mediaUrls[activeIndex].trim()} 
+                alt="Full display" 
+                style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ================================================================
 //  SECTION G · THE MAIN COMPONENT
-//  This is the actual app. It manages all the state (what's
-//  selected, what the form says, whether admin is unlocked, etc.)
-//  and renders the two views: Archive and Admin.
 // ================================================================
 export default function KpopArchive() {
-
-  // ── Which screen are we on? ──────────────────────────────────
-  const [view, setView] = useState("archive"); // "archive" or "admin"
-
-  // ── Archive data ─────────────────────────────────────────────
+  const [view, setView] = useState("archive");
   const [entries, setEntries]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [loadError, setLoadError] = useState(null);
 
-  // ── Archive filters ──────────────────────────────────────────
   const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch]       = useState("");
   const [expandedId, setExpandedId] = useState(null);
 
-  // ── Admin: password gate ─────────────────────────────────────
   const [unlocked, setUnlocked]       = useState(false);
   const [pwInput, setPwInput]         = useState("");
   const [pwError, setPwError]         = useState(false);
 
-  // ── Admin: save status ───────────────────────────────────────
   const [saving, setSaving]           = useState(false);
   const [saveOk, setSaveOk]           = useState(false);
   const [saveError, setSaveError]     = useState(null);
 
-  // ── Admin: the "Add Entry" form ──────────────────────────────
   const BLANK = {
     title:"", date:"", category:"music", era:"",
-    description:"", tags:"",
+    description:"", tags:"", media:"",
     platforms:[{ type:"youtube", url:"", label:"" }],
   };
   const [form, setForm] = useState(BLANK);
 
-  // ── Load entries when the app first opens ────────────────────
-  // useEffect runs once on startup. If we're in demo mode, load
-  // the fake data. Otherwise fetch real data from Supabase.
   useEffect(() => {
     if (IS_DEMO) {
       setEntries(DEMO_DATA);
@@ -185,8 +267,6 @@ export default function KpopArchive() {
     }
   }, []);
 
-  // ── Filter entries based on search + category ────────────────
-  // useMemo recalculates this only when entries/activeCat/search changes
   const filtered = useMemo(() => entries.filter(e => {
     const matchCat  = activeCat === "all" || e.category === activeCat;
     const q         = search.toLowerCase();
@@ -200,16 +280,13 @@ export default function KpopArchive() {
 
   const grouped = useMemo(() => groupByMonth(filtered), [filtered]);
 
-  // ── Admin: check password ────────────────────────────────────
   function tryUnlock() {
     if (pwInput === ADMIN_PASSWORD) { setUnlocked(true); setPwError(false); }
     else setPwError(true);
   }
 
-  // ── Admin: update a single field in the form ─────────────────
   function set(field, val) { setForm(f => ({ ...f, [field]: val })); }
 
-  // ── Admin: update one platform link row ──────────────────────
   function setPlatform(i, field, val) {
     setForm(f => {
       const p = [...f.platforms];
@@ -218,12 +295,10 @@ export default function KpopArchive() {
     });
   }
 
-  // ── Admin: save the form to Supabase (or demo state) ─────────
   async function handleSave() {
     if (!form.title || !form.date) return;
     setSaving(true); setSaveError(null);
 
-    // Build the final entry object from the form
     const entry = {
       title:       form.title.trim(),
       date:        form.date,
@@ -231,16 +306,15 @@ export default function KpopArchive() {
       era:         form.era.trim(),
       description: form.description.trim(),
       tags:        form.tags.split(",").map(t => t.trim()).filter(Boolean),
+      media:       form.media ? form.media.split(",").map(url => url.trim()).filter(Boolean) : [],
       platforms:   form.platforms.filter(p => p.url.trim()),
     };
 
     try {
       if (IS_DEMO) {
-        // Demo mode: just add to local list, no real database
         setEntries(prev => [{ ...entry, id: Date.now() }, ...prev]
           .sort((a,b) => b.date.localeCompare(a.date)));
       } else {
-        // Real mode: send to Supabase, then add the saved entry to the list
         const [saved] = await saveEntry(entry);
         setEntries(prev => [saved, ...prev].sort((a,b) => b.date.localeCompare(a.date)));
       }
@@ -253,32 +327,33 @@ export default function KpopArchive() {
     setSaving(false);
   }
 
-  // ── Reusable style snippets ───────────────────────────────────
   const inp  = { width:"100%", boxSizing:"border-box", background:"#13131F", border:"1px solid #222235", borderRadius:8, padding:"8px 12px", color:"#C8C8E8", fontSize:13, outline:"none" };
   const lbl  = { fontSize:10, color:"#50508A", letterSpacing:"0.08em", textTransform:"uppercase", display:"block", marginBottom:5, fontWeight:700 };
   const btn  = (active) => ({ padding:"8px 16px", borderRadius:8, border:"none", cursor:"pointer", fontSize:13, fontWeight:600, background: active ? "#A78BFA" : "#13131F", color: active ? "#0A0A0F" : "#50508A" });
 
-  // ================================================================
-  //  RENDER
-  // ================================================================
   return (
     <div style={{ minHeight:"100vh", background:"#08080F", color:"#E4E4F4", fontFamily:"'Inter','Helvetica Neue',sans-serif", fontSize:14 }}>
 
-      {/* ────────────────────────────────────────────────────────
-          HEADER — always visible at the top
-      ──────────────────────────────────────────────────────── */}
+      {/* HEADER NAVBAR */}
       <div style={{ borderBottom:"1px solid #18182A", padding:"16px 22px 12px", position:"sticky", top:0, zIndex:10, background:"rgba(8,8,15,0.96)", backdropFilter:"blur(14px)" }}>
-
-        {/* Top row: idol name + Archive/Admin tabs */}
+        
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
-          <div>
-            {IS_DEMO && (
-              <div style={{ fontSize:10, color:"#FBBF24", background:"rgba(251,191,36,0.08)", border:"1px solid rgba(251,191,36,0.2)", padding:"2px 8px", borderRadius:4, display:"inline-block", marginBottom:5 }}>
-                DEMO MODE · fill in SUPABASE_URL &amp; KEY to go live
-              </div>
-            )}
-            <div style={{ fontSize:10, letterSpacing:"0.14em", color:"#40405A", textTransform:"uppercase", marginBottom:2 }}>Media Archive</div>
-            <div style={{ fontSize:17, fontWeight:700, color:"#EDEDFF", letterSpacing:"-0.02em" }}>{IDOL_NAME}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <img 
+              src={IDOL_IMAGE} 
+              alt={IDOL_NAME} 
+              style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", border: "1px solid #A855F7", shadow: "0 2px 10px rgba(0,0,0,0.5)" }}
+              onError={(e) => { e.target.style.display = 'none'; }} 
+            />
+            <div>
+              {IS_DEMO && (
+                <div style={{ fontSize:10, color:"#FBBF24", background:"rgba(251,191,36,0.08)", border:"1px solid rgba(251,191,36,0.2)", padding:"2px 8px", borderRadius:4, display:"inline-block", marginBottom:5 }}>
+                  DEMO MODE · fill in SUPABASE_URL & KEY to go live
+                </div>
+              )}
+              <div style={{ fontSize:10, letterSpacing:"0.14em", color:"#40405A", textTransform:"uppercase", marginBottom:2 }}>Official Archive</div>
+              <div style={{ fontSize:17, fontWeight:700, color:"#EDEDFF", letterSpacing:"-0.02em" }}>An Yujin Archive</div>
+            </div>
           </div>
           <div style={{ display:"flex", gap:6 }}>
             <button onClick={()=>setView("archive")} style={{ ...btn(view==="archive"), border:"1px solid " + (view==="archive" ? "#38386A":"#18182A") }}>◈ Archive</button>
@@ -286,7 +361,6 @@ export default function KpopArchive() {
           </div>
         </div>
 
-        {/* Search + category chips (archive view only) */}
         {view === "archive" && <>
           <div style={{ position:"relative", marginBottom:10 }}>
             <span style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", color:"#30305A", fontSize:15 }}>⌕</span>
@@ -311,14 +385,10 @@ export default function KpopArchive() {
         </>}
       </div>
 
-      {/* ────────────────────────────────────────────────────────
-          ARCHIVE VIEW
-          Shows the timeline of entries, grouped by month.
-      ──────────────────────────────────────────────────────── */}
+      {/* ARCHIVE TIMELINE */}
       {view === "archive" && (
         <div style={{ maxWidth:740, margin:"0 auto", padding:"22px 18px 60px" }}>
 
-          {/* Loading / error / empty states */}
           {loading   && <div style={{ textAlign:"center", padding:60, color:"#40405A" }}>Loading…</div>}
           {loadError && <div style={{ textAlign:"center", padding:60, color:"#F87171" }}>{loadError}</div>}
           {!loading && !loadError && filtered.length === 0 && (
@@ -328,11 +398,9 @@ export default function KpopArchive() {
             </div>
           )}
 
-          {/* One section per month */}
           {grouped.map(grp => (
             <div key={`${grp.year}-${grp.month}`} style={{ marginBottom:28 }}>
 
-              {/* Month/year divider */}
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:11 }}>
                 <div style={{ fontSize:10, fontWeight:800, color:"#404068", textTransform:"uppercase", minWidth:24 }}>{MONTH_NAMES[parseInt(grp.month)]}</div>
                 <div style={{ fontSize:16, fontWeight:800, color:"#9090C0", letterSpacing:"-0.02em" }}>{grp.year}</div>
@@ -340,7 +408,6 @@ export default function KpopArchive() {
                 <div style={{ fontSize:10, color:"#30304A" }}>{grp.entries.length} item{grp.entries.length!==1?"s":""}</div>
               </div>
 
-              {/* Entry cards */}
               <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
                 {grp.entries.map(entry => {
                   const cat = getCat(entry.category);
@@ -358,19 +425,15 @@ export default function KpopArchive() {
                         transition:  "background 0.12s, border-color 0.12s",
                       }}
                     >
-                      {/* Card top row */}
                       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10 }}>
                         <div style={{ flex:1 }}>
                           <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:5, flexWrap:"wrap" }}>
-                            {/* Category badge */}
                             <span style={{ fontSize:10, fontWeight:700, background:`${cat.color}1A`, color:cat.color, padding:"2px 7px", borderRadius:4 }}>
                               {cat.label.toUpperCase()}
                             </span>
-                            {/* Era badge (optional) */}
                             {entry.era && (
                               <span style={{ fontSize:10, color:"#50508A", background:"#121220", padding:"2px 7px", borderRadius:4 }}>{entry.era}</span>
                             )}
-                            {/* Date */}
                             <span style={{ fontSize:11, color:"#38385A" }}>{niceDate(entry.date)}</span>
                           </div>
                           <div style={{ fontWeight:600, fontSize:14, color:"#D0D0F0", lineHeight:1.35 }}>{entry.title}</div>
@@ -378,15 +441,17 @@ export default function KpopArchive() {
                         <div style={{ color:"#28284A", fontSize:13, marginTop:3, flexShrink:0 }}>{open?"▾":"▸"}</div>
                       </div>
 
-                      {/* Expanded details */}
                       {open && (
                         <div style={{ marginTop:12, borderTop:"1px solid #161626", paddingTop:12 }}>
                           {entry.description && (
                             <p style={{ color:"#7878A8", fontSize:13, lineHeight:1.65, margin:"0 0 12px" }}>{entry.description}</p>
                           )}
-                          {/* Platform links */}
+                          
+                          {/* 🌟 HOOKED UP THE MEDIA GRID RIGHT HERE 🌟 */}
+                          <MediaGrid mediaUrls={entry.media} />
+
                           {(entry.platforms||[]).length > 0 && (
-                            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:(entry.tags||[]).length?10:0 }}>
+                            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop: 12, marginBottom:(entry.tags||[]).length?10:0 }}>
                               {entry.platforms.map((p,i) => {
                                 const pm = PLATFORMS[p.type] || { label:p.type, color:"#888", bg:"#222" };
                                 return (
@@ -399,7 +464,6 @@ export default function KpopArchive() {
                               })}
                             </div>
                           )}
-                          {/* Tags — clicking one sets it as the search term */}
                           <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
                             {(entry.tags||[]).map(tag => (
                               <span key={tag}
@@ -418,7 +482,6 @@ export default function KpopArchive() {
             </div>
           ))}
 
-          {/* Footer: count per category */}
           {!loading && entries.length > 0 && (
             <div style={{ borderTop:"1px solid #121222", paddingTop:20, display:"flex", gap:16, flexWrap:"wrap", justifyContent:"center" }}>
               {CATEGORIES.slice(1).map(cat => (
@@ -433,14 +496,10 @@ export default function KpopArchive() {
         </div>
       )}
 
-      {/* ────────────────────────────────────────────────────────
-          ADMIN VIEW
-          Password-protected. Shows a form to add new entries.
-      ──────────────────────────────────────────────────────── */}
+      {/* ADMIN CONSOLE VIEW */}
       {view === "admin" && (
         <div style={{ maxWidth:580, margin:"0 auto", padding:"30px 18px 60px" }}>
 
-          {/* ── Password gate ── */}
           {!unlocked ? (
             <div style={{ background:"#0C0C18", border:"1px solid #1A1A2E", borderRadius:14, padding:"36px 28px", textAlign:"center" }}>
               <div style={{ fontSize:30, marginBottom:10 }}>🔐</div>
@@ -458,21 +517,18 @@ export default function KpopArchive() {
             </div>
 
           ) : (
-            /* ── Add entry form ── */
             <div>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22 }}>
                 <div style={{ fontWeight:700, fontSize:15, color:"#D0D0F0" }}>Add New Entry</div>
                 <div style={{ fontSize:11, color:"#40405A" }}>{entries.length} entries total</div>
               </div>
 
-              {/* Success banner */}
               {saveOk && (
                 <div style={{ background:"rgba(52,211,153,0.08)", border:"1px solid rgba(52,211,153,0.25)", borderRadius:8, padding:"10px 14px", marginBottom:16, color:"#34D399", fontSize:13 }}>
                   ✓ Entry saved! It will appear in the archive now.
                 </div>
               )}
 
-              {/* Error banner */}
               {saveError && (
                 <div style={{ background:"rgba(248,113,113,0.08)", border:"1px solid rgba(248,113,113,0.25)", borderRadius:8, padding:"10px 14px", marginBottom:16, color:"#F87171", fontSize:13 }}>
                   ✕ Save failed: {saveError}
@@ -481,13 +537,11 @@ export default function KpopArchive() {
 
               <div style={{ display:"flex", flexDirection:"column", gap:15 }}>
 
-                {/* Title */}
                 <div>
                   <label style={lbl}>Title *</label>
                   <input value={form.title} onChange={e=>set("title",e.target.value)} placeholder="e.g. ECLIPSE – Title Track MV" style={inp} />
                 </div>
 
-                {/* Date + Category (side by side) */}
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                   <div>
                     <label style={lbl}>Date *</label>
@@ -501,39 +555,37 @@ export default function KpopArchive() {
                   </div>
                 </div>
 
-                {/* Era */}
                 <div>
                   <label style={lbl}>Era / Comeback <span style={{ color:"#303050", fontWeight:400 }}>(optional)</span></label>
-                  <input value={form.era} onChange={e=>set("era",e.target.value)} placeholder="e.g. MOONRISE, PRISM — or leave blank" style={inp} />
+                  <input value={form.era} onChange={e=>set("era",e.target.value)} placeholder="e.g. IVE SWITCH, I've IVE — or leave blank" style={inp} />
                 </div>
 
-                {/* Description */}
                 <div>
                   <label style={lbl}>Description <span style={{ color:"#303050", fontWeight:400 }}>(optional)</span></label>
                   <textarea value={form.description} onChange={e=>set("description",e.target.value)} placeholder="What happened? Context, view counts, notable moments…" rows={3} style={{ ...inp, resize:"vertical", lineHeight:1.55 }} />
                 </div>
 
-                {/* Tags */}
+                {/* 🌟 NEW MEDIA LINKS FIELD IN THE ADMIN PANEL 🌟 */}
                 <div>
-                  <label style={lbl}>Tags <span style={{ color:"#303050", fontWeight:400 }}>(comma-separated)</span></label>
-                  <input value={form.tags} onChange={e=>set("tags",e.target.value)} placeholder="MV, title track, MOONRISE, Inkigayo" style={inp} />
+                  <label style={lbl}>Media Gallery Links <span style={{ color:"#303050", fontWeight:400 }}>(comma-separated image or YouTube URLs)</span></label>
+                  <input value={form.media} onChange={e=>set("media",e.target.value)} placeholder="e.g. https://site.com/pic1.jpg, https://youtube.com/watch?v=..." style={inp} />
                 </div>
 
-                {/* Platform links */}
+                <div>
+                  <label style={lbl}>Tags <span style={{ color:"#303050", fontWeight:400 }}>(comma-separated)</span></label>
+                  <input value={form.tags} onChange={e=>set("tags",e.target.value)} placeholder="MV, title track, IVE, Inkigayo" style={inp} />
+                </div>
+
                 <div>
                   <label style={lbl}>Platform Links</label>
                   <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
                     {form.platforms.map((p,i) => (
                       <div key={i} style={{ display:"grid", gridTemplateColumns:"120px 1fr 90px auto", gap:7, alignItems:"center" }}>
-                        {/* Platform dropdown */}
                         <select value={p.type} onChange={e=>setPlatform(i,"type",e.target.value)} style={inp}>
                           {PLATFORM_KEYS.map(k => <option key={k} value={k}>{PLATFORMS[k].label}</option>)}
                         </select>
-                        {/* URL */}
                         <input value={p.url} onChange={e=>setPlatform(i,"url",e.target.value)} placeholder="Paste URL…" style={inp} />
-                        {/* Link label */}
                         <input value={p.label} onChange={e=>setPlatform(i,"label",e.target.value)} placeholder="e.g. MV" style={inp} />
-                        {/* Remove button */}
                         {form.platforms.length > 1 && (
                           <button onClick={()=>setForm(f=>({...f,platforms:f.platforms.filter((_,j)=>j!==i)}))} style={{ ...btn(false), padding:"8px 10px", color:"#F87171" }}>✕</button>
                         )}
@@ -546,7 +598,6 @@ export default function KpopArchive() {
                   </div>
                 </div>
 
-                {/* Save */}
                 <button onClick={handleSave} disabled={saving || !form.title || !form.date} style={{
                   ...btn(!saving && form.title && form.date),
                   padding:"11px", width:"100%", fontSize:14, marginTop:4,

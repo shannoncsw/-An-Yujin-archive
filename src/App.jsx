@@ -95,18 +95,47 @@ function groupByMonth(entries) {
 }
 
 // ================================================================
-//  MEDIA GRID + LIGHTBOX COMPONENT (Instagram Style + More)
+//  UNIVERSAL MEDIA GRID + LIGHTBOX COMPONENT 
+//  Handles: Images, YouTube, Twitter, Instagram, TikTok & MP4s
 // ================================================================
 const MediaGrid = ({ mediaUrls }) => {
   const [activeIndex, setActiveIndex] = useState(null);
 
   if (!mediaUrls || mediaUrls.length === 0 || mediaUrls[0] === "") return null;
 
+  // 1. Parse YouTube
   const getYouTubeId = (url) => {
     if (!url) return null;
     const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  // 2. Parse Twitter / X
+  const getTwitterId = (url) => {
+    if (!url) return null;
+    const match = url.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/i);
+    return match ? match[1] : null;
+  };
+
+  // 3. Parse Instagram (Posts and Reels)
+  const getInstagramId = (url) => {
+    if (!url) return null;
+    const match = url.match(/(?:instagram\.com)\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/i);
+    return match ? match[1] : null;
+  };
+
+  // 4. Parse TikTok (Standard desktop/web links)
+  const getTikTokId = (url) => {
+    if (!url) return null;
+    const match = url.match(/(?:tiktok\.com)\/@[\w.-]+\/video\/(\d+)/i);
+    return match ? match[1] : null;
+  };
+
+  // 5. Parse Raw Video Files (.mp4, .mov, etc.)
+  const isRawVideo = (url) => {
+    if (!url) return false;
+    return /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url.trim());
   };
 
   const handlePrev = (e) => {
@@ -121,16 +150,24 @@ const MediaGrid = ({ mediaUrls }) => {
 
   return (
     <div style={{ marginTop: 14, marginBottom: 6 }}>
-      {/* 1. INSTAGRAM GRID (3 Columns Max) */}
+      {/* 1. THE THUMBNAIL GRID */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
         {mediaUrls.slice(0, 3).map((url, index) => {
           const ytId = getYouTubeId(url);
-          const thumbnailUrl = ytId 
-            ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` 
-            : url.trim();
-
+          const tweetId = getTwitterId(url);
+          const igId = getInstagramId(url);
+          const ttId = getTikTokId(url);
+          const isVid = isRawVideo(url);
+          
+          const isVideoPlatform = ytId || tweetId || igId || ttId || isVid;
           const isLastVisible = index === 2;
           const remainingCount = mediaUrls.length - 3;
+
+          // Label text for social platform icons
+          let platformLabel = "Video";
+          if (tweetId) platformLabel = "Twitter";
+          if (igId) platformLabel = "Instagram";
+          if (ttId) platformLabel = "TikTok";
 
           return (
             <div 
@@ -146,25 +183,43 @@ const MediaGrid = ({ mediaUrls }) => {
                 border: "1px solid #202035",
               }}
             >
-              <img 
-                src={thumbnailUrl} 
-                alt="Thumbnail" 
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                onError={(e) => { e.target.src = 'https://placehold.co/400x400?text=Image+Error'; }}
-              />
+              {/* Thumbnail Display logic */}
+              {ytId ? (
+                <img 
+                  src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`} 
+                  alt="YouTube" 
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : isVid ? (
+                <video src={url.trim()} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted preload="metadata" />
+              ) : (tweetId || igId || ttId) ? (
+                /* Social Embed Placeholder (Platforms block raw image scraping) */
+                <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#1b1b3a", padding: 8 }}>
+                  <span style={{ fontSize: 11, color: "#A0A0C0", fontWeight: "600" }}>{platformLabel}</span>
+                </div>
+              ) : (
+                <img 
+                  src={url.trim()} 
+                  alt="Archive pic" 
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={(e) => { e.target.src = 'https://placehold.co/400x400?text=Image+Error'; }}
+                />
+              )}
 
-              {ytId && !isLastVisible && (
-                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.25)" }}>
+              {/* Play Button Overlay */}
+              {isVideoPlatform && !isLastVisible && (
+                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.2)" }}>
                   <div style={{ background: "#A855F7", padding: 8, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg style={{ width: 14, height: 14, fill: "#FFF" }} viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                    <svg style={{ width: 12, height: 12, fill: "#FFF" }} viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                   </div>
                 </div>
               )}
 
+              {/* +More counter overlay */}
               {isLastVisible && remainingCount > 0 && (
-                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#FFF", fontWeight: "bold" }}>
+                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#FFF", fontWeight: "bold" }}>
                   <span style={{ fontSize: 16 }}>+{remainingCount}</span>
-                  <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.05em", color: "#B0B0C5" }}>More</span>
+                  <span style={{ fontSize: 9, textTransform: "uppercase", color: "#B0B0C5" }}>More</span>
                 </div>
               )}
             </div>
@@ -172,62 +227,77 @@ const MediaGrid = ({ mediaUrls }) => {
         })}
       </div>
 
-      {/* 2. THE LIGHTBOX SLIDESHOW MODAL */}
-      {activeIndex !== null && (
-        <div 
-          style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.92)", padding: 16, backdropFilter: "blur(8px)" }}
-          onClick={() => setActiveIndex(null)}
-        >
-          <button 
-            style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: "#A0A0C0", fontSize: 36, cursor: "pointer", zIndex: 120 }}
+      {/* 2. THE LIGHTBOX MODAL */}
+      {activeIndex !== null && (() => {
+        const currentUrl = mediaUrls[activeIndex];
+        const ytId = getYouTubeId(currentUrl);
+        const tweetId = getTwitterId(currentUrl);
+        const igId = getInstagramId(currentUrl);
+        const ttId = getTikTokId(currentUrl);
+        const isVid = isRawVideo(currentUrl);
+
+        // Adjust modal sizing based on content style (Vertical vs Horizontal)
+        const isVerticalEmbed = igId || ttId || tweetId;
+
+        return (
+          <div 
+            style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.92)", padding: 16, backdropFilter: "blur(8px)" }}
             onClick={() => setActiveIndex(null)}
           >
-            ×
-          </button>
-
-          {activeIndex > 0 && (
             <button 
-              onClick={handlePrev}
-              style={{ position: "absolute", left: 16, zIndex: 110, background: "rgba(25,25,40,0.6)", border: "none", color: "#FFF", padding: "12px 16px", borderRadius: "50%", fontSize: 18, cursor: "pointer" }}
+              style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: "#A0A0C0", fontSize: 36, cursor: "pointer", zIndex: 120 }}
+              onClick={() => setActiveIndex(null)}
             >
-              ❮
+              ×
             </button>
-          )}
 
-          {activeIndex < mediaUrls.length - 1 && (
-            <button 
-              onClick={handleNext}
-              style={{ position: "absolute", right: 16, zIndex: 110, background: "rgba(25,25,40,0.6)", border: "none", color: "#FFF", padding: "12px 16px", borderRadius: "50%", fontSize: 18, cursor: "pointer" }}
-            >
-              ❯
-            </button>
-          )}
-
-          <div 
-            style={{ position: "relative", width: "100%", maxWidth: 860, aspectRatio: "16 / 9", display: "flex", alignItems: "center", justifyContent: "center", background: "#000", borderRadius: 12, overflow: "hidden" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {getYouTubeId(mediaUrls[activeIndex]) ? (
-              <iframe 
-                src={`https://www.youtube.com/embed/${getYouTubeId(mediaUrls[activeIndex])}?autoplay=1`}
-                style={{ width: "100%", height: "100%", border: "none" }} 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowFullScreen
-              />
-            ) : (
-              <img 
-                src={mediaUrls[activeIndex].trim()} 
-                alt="Full display" 
-                style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
-              />
+            {activeIndex > 0 && (
+              <button onClick={handlePrev} style={{ position: "absolute", left: 16, zIndex: 110, background: "rgba(25,25,40,0.6)", border: "none", color: "#FFF", padding: "12px 16px", borderRadius: "50%", cursor: "pointer" }}>❮</button>
             )}
+
+            {activeIndex < mediaUrls.length - 1 && (
+              <button onClick={handleNext} style={{ position: "absolute", right: 16, zIndex: 110, background: "rgba(25,25,40,0.6)", border: "none", color: "#FFF", padding: "12px 16px", borderRadius: "50%", cursor: "pointer" }}>❯</button>
+            )}
+
+            {/* Dynamic Iframe Container */}
+            <div 
+              style={{ 
+                position: "relative", 
+                width: "100%", 
+                maxWidth: isVerticalEmbed ? 480 : 860, 
+                aspectRatio: isVerticalEmbed ? "auto" : "16 / 9", 
+                height: isVerticalEmbed ? "80vh" : "auto",
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "center", 
+                background: "#000", 
+                borderRadius: 12, 
+                overflow: "hidden" 
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {ytId ? (
+                <iframe src={`https://www.youtube.com/embed/${ytId}?autoplay=1`} style={{ width: "100%", height: "100%", border: "none" }} allow="autoplay; encrypted-media" allowFullScreen />
+              ) : tweetId ? (
+                <iframe src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark`} style={{ width: "100%", height: "100%", border: "none" }} />
+              ) : igId ? (
+                <iframe src={`https://www.instagram.com/p/${igId}/embed/captioned/`} style={{ width: "100%", height: "100%", border: "none", background: "#FFF" }} scrolling="no" />
+              ) : ttId ? (
+                <iframe src={`https://www.tiktok.com/embed/v2/${ttId}`} style={{ width: "100%", height: "100%", border: "none" }} />
+              ) : isVid ? (
+                <video src={currentUrl.trim()} controls autoPlay style={{ maxWidth: "100%", maxHeight: "100%" }} />
+              ) : (
+                <img src={currentUrl.trim()} alt="Display" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
 
+        
 // ================================================================
 //  SECTION G · THE MAIN COMPONENT
 // ================================================================

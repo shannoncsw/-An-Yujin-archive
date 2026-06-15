@@ -1,8 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 
-// ================================================================
-//  SECTION A · YOUR SETTINGS (Secured with Environment Variables)
-// ================================================================
+
 const IDOL_NAME      = "안유진 · An Yujin";
 
 // The app now looks at your hidden .env file for these values.
@@ -11,9 +9,7 @@ const SUPABASE_URL   = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY   = import.meta.env.VITE_SUPABASE_KEY || "";
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "";
 
-// ================================================================
-//  SECTION B · CATEGORIES & PLATFORMS
-// ================================================================
+
 const CATEGORIES = [
   { id: "all",       label: "All",          color: "#E2E2E2", dot: "#444455" },
   { id: "music",     label: "Music",         color: "#C084FC", dot: "#A855F7" },
@@ -34,9 +30,7 @@ const PLATFORMS = {
 };
 const PLATFORM_KEYS = Object.keys(PLATFORMS);
 
-// ================================================================
-//  SECTION C · DEMO DATA
-// ================================================================
+
 const DEMO_DATA = [
   { 
     id:1, date:"2025-02-28", title:"IVE – 'Accendio' MV", category:"music", era:"Accendio", 
@@ -54,9 +48,7 @@ const DEMO_DATA = [
   },
 ];
 
-// ================================================================
-//  SECTION D · SUPABASE HELPERS & UPLOAD
-// ================================================================
+
 const IS_DEMO = !SUPABASE_URL || SUPABASE_URL.includes("YOUR_PROJECT_ID");
 
 async function fetchEntries() {
@@ -94,9 +86,7 @@ async function uploadMediaFile(file) {
   return `${SUPABASE_URL}/storage/v1/object/public/archive-media/${fileName}`;
 }
 
-// ================================================================
-//  SECTION E · SMALL HELPER FUNCTIONS
-// ================================================================
+
 const MONTH_NAMES = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function getCat(id) { return CATEGORIES.find(c => c.id === id) || CATEGORIES[1]; }
@@ -118,9 +108,7 @@ function groupByMonth(entries) {
     .map(([key, list]) => ({ year:key.slice(0,4), month:key.slice(5,7), entries:list }));
 }
 
-// ================================================================
-//  SECTION F · UNIVERSAL MEDIA GRID + SCROLLABLE ALBUM OVERLAY
-// ================================================================
+
 const MediaGrid = ({ mediaUrls }) => {
   const [showAlbum, setShowAlbum] = useState(false);
 
@@ -239,9 +227,7 @@ const getYouTubeId = (url) => {
   );
 };
 
-// ================================================================
-//  SECTION G · MAIN COMPONENT
-// ================================================================
+
 export default function KpopArchive() {
   const [view, setView] = useState("archive"); 
   const [entries, setEntries]     = useState([]);

@@ -1,12 +1,15 @@
 import { useState, useMemo, useEffect } from "react";
 
 // ================================================================
-//  SECTION A · YOUR SETTINGS
+//  SECTION A · YOUR SETTINGS (Secured with Environment Variables)
 // ================================================================
 const IDOL_NAME      = "안유진 · An Yujin";
-const SUPABASE_URL   = "https://nbnpkswhasujaalynzgi.supabase.co";
-const SUPABASE_KEY   = "sb_publishable_hoJJ99pfIBe0l0ehieAo8g_Ekxz2CW2";
-const ADMIN_PASSWORD = "@2Aab5e1982007";
+
+// Ensure your .env file has these exact variables defined!
+// If they are missing, the app will fall back to empty strings.
+const SUPABASE_URL   = import.meta.env.VITE_SUPABASE_URL || "";
+const SUPABASE_KEY   = import.meta.env.VITE_SUPABASE_KEY || "";
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "";
 
 // ================================================================
 //  SECTION B · CATEGORIES & PLATFORMS
@@ -54,7 +57,7 @@ const DEMO_DATA = [
 // ================================================================
 //  SECTION D · SUPABASE HELPERS & UPLOAD
 // ================================================================
-const IS_DEMO = SUPABASE_URL.includes("YOUR_PROJECT_ID");
+const IS_DEMO = !SUPABASE_URL || SUPABASE_URL.includes("YOUR_PROJECT_ID");
 
 async function fetchEntries() {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/entries?select=*&order=date.desc`, { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } });
@@ -121,6 +124,16 @@ function groupByMonth(entries) {
 const MediaGrid = ({ mediaUrls }) => {
   const [showAlbum, setShowAlbum] = useState(false);
 
+  // FORCE SCROLL LOCK: Prevents the background page from moving when album is open
+  useEffect(() => {
+    if (showAlbum) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => { document.body.style.overflow = "unset"; };
+  }, [showAlbum]);
+
   if (!mediaUrls || mediaUrls.length === 0 || mediaUrls[0] === "") return null;
 
   const getYouTubeId = (url) => {
@@ -133,7 +146,6 @@ const MediaGrid = ({ mediaUrls }) => {
   const getTikTokId = (url) => { const match = (url||"").match(/(?:tiktok\.com)\/@[\w.-]+\/video\/(\d+)/i); return match ? match[1] : null; };
   const isRawVideo = (url) => /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test((url||"").trim());
 
-  // Renders individual items inside grids smoothly
   const renderMediaItem = (url) => {
     const ytId = getYouTubeId(url);
     const tweetId = getTwitterId(url);
@@ -142,7 +154,7 @@ const MediaGrid = ({ mediaUrls }) => {
     const isVid = isRawVideo(url);
 
     if (ytId) {
-      return <iframe src={`https://www.youtube.com/embed/${ytId}`} style={{ width: "100%", height: "100%", border: "none" }} allowFullScreen />;
+      return <iframe src={`https://www.youtube.com/embed/$3{ytId}`} style={{ width: "100%", height: "100%", border: "none" }} allowFullScreen />;
     } else if (tweetId) {
       return <iframe src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark`} style={{ width: "100%", height: "100%", border: "none" }} />;
     } else if (igId) {
@@ -171,7 +183,7 @@ const MediaGrid = ({ mediaUrls }) => {
               style={{ position: "relative", aspectRatio: "1 / 1", background: "#121225", borderRadius: 8, overflow: "hidden", cursor: "pointer", border: "1px solid #202035" }}>
               
               {ytId ? (
-                <img src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`} alt="YT Thumb" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img src={`https://www.youtube.com/embed/$4{ytId}/hqdefault.jpg`} alt="YT Thumb" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : isVid ? (
                 <video src={url.trim()} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted preload="metadata" />
               ) : (getTwitterId(url) || getInstagramId(url) || getTikTokId(url)) ? (
@@ -198,18 +210,20 @@ const MediaGrid = ({ mediaUrls }) => {
 
       {/* FULL SCROLLABLE ALBUM MODAL */}
       {showAlbum && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(6,6,12,0.95)", padding: 20, backdropFilter: "blur(12px)" }} onClick={() => setShowAlbum(false)}>
-          <div style={{ position: "absolute", top: 16, right: 20, display: "flex", alignItems: "center", gap: 14, zIndex: 120 }}>
-            <span style={{ fontSize: 13, color: "#707090", fontWeight: 600 }}>{mediaUrls.length} Media Items</span>
-            <button style={{ background: "rgba(255,255,255,0.06)", border: "none", color: "#E4E4F4", width: 32, height: 32, borderRadius: "50%", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowAlbum(false)}>×</button>
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "flex-start", justifyContent: "center", background: "rgba(6,6,12,0.97)", padding: "80px 20px 40px", backdropFilter: "blur(15px)", overflowY: "auto" }} onClick={() => setShowAlbum(false)}>
+          
+          {/* Fixed Close Header Control */}
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 60, background: "rgba(6,6,12,0.8)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px", borderBottom: "1px solid #1E1E30", zIndex: 120, backdropFilter: "blur(10px)" }} onClick={(e) => e.stopPropagation()}>
+            <span style={{ fontSize: 14, color: "#A78BFA", fontWeight: 700 }}>Collection ({mediaUrls.length} items)</span>
+            <button style={{ background: "#1F1F35", border: "none", color: "#E4E4F4", width: 36, height: 36, borderRadius: "50%", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }} onClick={() => setShowAlbum(false)}>×</button>
           </div>
 
-          {/* Scrollable Gallery Container */}
-          <div style={{ width: "100%", maxWidth: 1000, maxHeight: "85vh", overflowY: "auto", paddingRight: 6, display: "grid", gridTemplateColumns: mediaUrls.length === 1 ? "1fr" : "repeat(auto-fit, minmax(340px, 1fr))", gap: 16 }} onClick={(e) => e.stopPropagation()}>
+          {/* Scrollable Grid Layout Wrapper */}
+          <div style={{ width: "100%", maxWidth: 1000, display: "grid", gridTemplateColumns: mediaUrls.length === 1 ? "1fr" : "repeat(auto-fit, minmax(320px, 1fr))", gap: 20 }} onClick={(e) => e.stopPropagation()}>
             {mediaUrls.map((url, index) => {
               const isSocial = getInstagramId(url) || getTikTokId(url) || getTwitterId(url);
               return (
-                <div key={index} style={{ background: "#0C0C14", border: "1px solid #1E1E30", borderRadius: 12, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", height: isSocial ? 520 : 280, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
+                <div key={index} style={{ background: "#000", border: "1px solid #1E1E30", borderRadius: 12, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", height: isSocial ? 540 : 300, boxShadow: "0 12px 36px rgba(0,0,0,0.6)" }}>
                   {renderMediaItem(url)}
                 </div>
               );
@@ -361,7 +375,7 @@ export default function KpopArchive() {
           <div>
             {IS_DEMO && (
               <div style={{ fontSize:10, color:"#FBBF24", background:"rgba(251,191,36,0.08)", border:"1px solid rgba(251,191,36,0.2)", padding:"2px 8px", borderRadius:4, display:"inline-block", marginBottom:5 }}>
-                DEMO MODE · Live connection requires SUPABASE configuration
+                DEMO MODE · Connect Supabase in your .env file
               </div>
             )}
             <div style={{ fontSize:10, letterSpacing:"0.14em", color:"#40405A", textTransform:"uppercase", marginBottom:2 }}>Media Archive</div>
@@ -633,3 +647,4 @@ export default function KpopArchive() {
     </div>
   );
 }
+

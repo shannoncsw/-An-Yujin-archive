@@ -1,12 +1,15 @@
 import { useState, useMemo, useEffect } from "react";
 
 // ================================================================
-//  SECTION A · YOUR SETTINGS
+//  SECTION A · YOUR SETTINGS (Secured with Environment Variables)
 // ================================================================
 const IDOL_NAME      = "안유진 · An Yujin";
-const SUPABASE_URL   = "https://nbnpkswhasujaalynzgi.supabase.co";
-const SUPABASE_KEY   = "sb_publishable_hoJJ99pfIBe0l0ehieAo8g_Ekxz2CW2";
-const ADMIN_PASSWORD = "@2Aab5e1982007";
+
+// The app now looks at your hidden .env file for these values.
+// If it can't find them, it defaults to empty strings to prevent crashes.
+const SUPABASE_URL   = import.meta.env.VITE_SUPABASE_URL || "";
+const SUPABASE_KEY   = import.meta.env.VITE_SUPABASE_KEY || "";
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "";
 
 // ================================================================
 //  SECTION B · CATEGORIES & PLATFORMS
@@ -372,7 +375,7 @@ export default function KpopArchive() {
           <div>
             {IS_DEMO && (
               <div style={{ fontSize:10, color:"#FBBF24", background:"rgba(251,191,36,0.08)", border:"1px solid rgba(251,191,36,0.2)", padding:"2px 8px", borderRadius:4, display:"inline-block", marginBottom:5 }}>
-                DEMO MODE · Connect Supabase strings in Section A
+                DEMO MODE · Connect Supabase strings in your .env file
               </div>
             )}
             <div style={{ fontSize:10, letterSpacing:"0.14em", color:"#40405A", textTransform:"uppercase", marginBottom:2 }}>Media Archive</div>
@@ -594,7 +597,7 @@ export default function KpopArchive() {
                           const url = await uploadMediaFile(file);
                           setForm(prev => ({...prev, media: prev.media ? prev.media + ", " + url : url}));
                         } catch (err) { alert("Upload failed: " + err.message); }
-                        setSaving(file);
+                        setSaving(false);
                         e.target.value = ""; 
                       }} 
                     />

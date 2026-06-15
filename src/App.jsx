@@ -100,17 +100,22 @@ async function uploadMediaFile(file) {
 const MONTH_NAMES = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 // Logic to extract thumbnail URLs for various platforms
+// ================================================================
+//  REPLACEMENT: SECTION E & F (Thumbnail & Grid Logic)
+// ================================================================
+
 function getSocialThumbnail(url) {
   if (!url) return null;
   // YouTube
   const ytMatch = url.match(/(?:youtu\.be\/|v\/|watch\?v=)([^#\&\?]*)/);
-  if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
-  // Twitter/X (Uses an oEmbed proxy or standard preview)
+  if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/mqdefault.jpg`;
+  
+  // Platform Icons (Visual Placeholders)
   if (url.includes('twitter.com') || url.includes('x.com')) return "https://abs.twimg.com/icons/apple-touch-icon-192x192.png";
-  // TikTok
   if (url.includes('tiktok.com')) return "https://sf16-website-login.neutral.pstatp.com/obj/eden-va2/630440050/tiktok_logo.png";
-  // RedNote (XiaoHongShu)
+  if (url.includes('instagram.com')) return "https://static.cdninstagram.com/rsrc.php/v3/yI/r/VsNE-OHk_8a.png";
   if (url.includes('xiaohongshu') || url.includes('rednote')) return "https://s1.xiaohongshu.com/static/logo.png";
+  
   return null;
 }
 
@@ -139,6 +144,74 @@ function groupByMonth(entries) {
 const MediaGrid = ({ mediaUrls }) => {
   const [showAlbum, setShowAlbum] = useState(false);
 
+  useEffect(() => {
+    document.body.style.overflow = showAlbum ? "hidden" : "unset";
+  }, [showAlbum]);
+
+  if (!mediaUrls || mediaUrls.length === 0 || mediaUrls[0] === "") return null;
+
+  return (
+    <div style={{ marginTop: 14, marginBottom: 6 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+        {mediaUrls.slice(0, 3).map((url, index) => {
+          const isLastVisible = index === 2;
+          const remainingCount = mediaUrls.length - 3;
+          const thumb = getSocialThumbnail(url);
+
+          return (
+            <div key={index} onClick={(e) => { e.stopPropagation(); setShowAlbum(true); }}
+              style={{ 
+                position: "relative", aspectRatio: "1 / 1", borderRadius: 8, overflow: "hidden", 
+                cursor: "pointer", border: "1px solid #202035", background: "#0a0a0f",
+                display: "flex", alignItems: "center", justifyContent: "center"
+              }}>
+              
+              {/* Prioritize Thumbnail/Logo, fallback to pure color block */}
+              {thumb ? (
+                <div style={{ 
+                  width: "100%", height: "100%", 
+                  backgroundImage: `url(${thumb})`, 
+                  backgroundSize: thumb.includes('youtube') ? "cover" : "50%", 
+                  backgroundPosition: "center", backgroundRepeat: "no-repeat" 
+                }} />
+              ) : (
+                <div style={{ width: "100%", height: "100%", background: "#1a1a2e" }} />
+              )}
+
+              {isLastVisible && remainingCount > 0 && (
+                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontSize: 16, color: "#A78BFA", fontWeight: "bold" }}>+{remainingCount}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Album Modal - Keeps previous code structure */}
+      {showAlbum && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(6,6,12,0.97)", padding: "80px 20px 40px", backdropFilter: "blur(15px)", overflowY: "auto" }} onClick={() => setShowAlbum(false)}>
+           <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 60, background: "rgba(6,6,12,0.8)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px", borderBottom: "1px solid #1E1E30", zIndex: 120 }}>
+             <span style={{ fontSize: 14, color: "#A78BFA" }}>Collection ({mediaUrls.length})</span>
+             <button onClick={() => setShowAlbum(false)} style={{ background: "#1F1F35", border: "none", color: "#FFF", borderRadius: "50%", width: 32, height: 32 }}>×</button>
+           </div>
+           <div style={{ maxWidth: 800, margin: "0 auto", display: "grid", gap: 20 }}>
+             {mediaUrls.map((url, i) => (
+                <div key={i} style={{ width: "100%", background: "#000", padding: 10, borderRadius: 12 }}>
+                   {/* Simplified embed rendering */}
+                   {url.includes("youtube") ? (
+                      <iframe src={`https://www.youtube.com/embed/${url.split('v=')[1]}`} style={{ width: "100%", height: 400, border: "none" }} allowFullScreen />
+                   ) : (
+                      <img src={url} style={{ width: "100%", borderRadius: 8 }} />
+                   )}
+                </div>
+             ))}
+           </div>
+        </div>
+      )}
+    </div>
+  );
+};
   // FORCE SCROLL LOCK: Prevents the background page from moving when album is open
   useEffect(() => {
     if (showAlbum) {

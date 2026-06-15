@@ -136,11 +136,15 @@ const MediaGrid = ({ mediaUrls }) => {
 
   if (!mediaUrls || mediaUrls.length === 0 || mediaUrls[0] === "") return null;
 
-  const getYouTubeId = (url) => {
-    if (!url) return null;
-    const match = url.match(/(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*)/);
-    return (match && match[1].length === 11) ? match[1] : null;
-  };
+  // Updated Helper inside MediaGrid
+const getYouTubeId = (url) => {
+  // Pattern 1: Standard (watch?v=...)
+  // Pattern 2: Shorts (/shorts/...)
+  // Pattern 3: Short link (youtu.be/...)
+  const match = url.match(/(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|shorts\/)([^#\&\?]*)/);
+  return (match && match[1].length === 11) ? match[1] : null;
+};
+
   const getTwitterId = (url) => { const match = (url||"").match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/i); return match ? match[1] : null; };
   const getInstagramId = (url) => { const match = (url||"").match(/(?:instagram\.com)\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/i); return match ? match[1] : null; };
   const getTikTokId = (url) => { const match = (url||"").match(/(?:tiktok\.com)\/@[\w.-]+\/video\/(\d+)/i); return match ? match[1] : null; };

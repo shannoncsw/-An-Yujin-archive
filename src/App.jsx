@@ -57,22 +57,35 @@ async function fetchEntries() {
   return res.json();
 }
 
-async function saveEntry(entry) {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/entries`,
-    {
-      method: "POST",
-      headers: {
-        "apikey": SUPABASE_KEY,
-        "Authorization": `Bearer ${SUPABASE_KEY}`,
-        "Content-Type": "application/json",
-        "Prefer": "return=representation",
-      },
-      body: JSON.stringify(entry),
-    }
-  );
+async function saveEntry(entry, editId = null) {
+  const isEdit = editId !== null;
+  const url = isEdit 
+    ? `${SUPABASE_URL}/rest/v1/entries?id=eq.${editId}` 
+    : `${SUPABASE_URL}/rest/v1/entries`;
+
+  const res = await fetch(url, {
+    method: isEdit ? "PATCH" : "POST",
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      "Prefer": "return=representation",
+    },
+    body: JSON.stringify(entry),
+  });
   if (!res.ok) throw new Error(`Could not save: ${res.status}`);
   return res.json();
+}
+
+async function deleteEntryFromDb(id) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/entries?id=eq.${id}`, {
+    method: "DELETE",
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+    },
+  });
+  if (!res.ok) throw new Error(`Could not delete: ${res.status}`);
 }
 
 // ================================================================
@@ -313,11 +326,14 @@ export default function KpopArchive() {
   const [saveOk, setSaveOk]           = useState(false);
   const [saveError, setSaveError]     = useState(null);
 
+  // New tracking state for edits
+  const [editingId, setEditingId]     = useState(null);
+
   const BLANK = {
     title:"", date:"", category:"music", era:"",
     description:"", tags:"",
     platforms:[{ type:"youtube", url:"", label:"" }],
-    media: "" // New text input field to accept comma-separated visual assets
+    media: "" 
   };
   const [form, setForm] = useState(BLANK);
 
@@ -360,6 +376,42 @@ export default function KpopArchive() {
     });
   }
 
+  // Load a post configuration into form values for editing
+  function triggerEdit(entry) {
+    setEditingId(entry.id);
+    setForm({
+      title: entry.title || "",
+      date: entry.date || "",
+      category: entry.category || "music",
+      era: entry.era || "",
+      description: entry.description || "",
+      tags: (entry.tags || []).join(", "),
+      media: (entry.media || []).join(", "),
+      platforms: (entry.platforms && entry.platforms.length > 0) 
+        ? entry.platforms 
+        : [{ type:"youtube", url:"", label:"" }]
+    });
+    setView("admin");
+  }
+
+  // Handle direct deletion process
+  async function triggerDelete(e, id) {
+    e.stopPropagation();
+    if (!window.confirm("Are you completely sure you want to delete this entry? This action cannot be undone.")) return;
+    
+    try {
+      if (IS_DEMO) {
+        setEntries(prev => prev.filter(item => item.id !== id));
+      } else {
+        await deleteEntryFromDb(id);
+        setEntries(prev => prev.filter(item => item.id !== id));
+      }
+      if (expandedId === id) setExpandedId(null);
+    } catch(err) {
+      alert(`Delete operation failed: ${err.message}`);
+    }
+  }
+
   async function handleSave() {
     if (!form.title || !form.date) return;
     setSaving(true); setSaveError(null);
@@ -377,13 +429,23 @@ export default function KpopArchive() {
 
     try {
       if (IS_DEMO) {
-        setEntries(prev => [{ ...entry, id: Date.now() }, ...prev]
-          .sort((a,b) => b.date.localeCompare(a.date)));
+        if (editingId) {
+          setEntries(prev => prev.map(item => item.id === editingId ? { ...entry, id: editingId } : item)
+            .sort((a,b) => b.date.localeCompare(a.date)));
+        } else {
+          setEntries(prev => [{ ...entry, id: Date.now() }, ...prev]
+            .sort((a,b) => b.date.localeCompare(a.date)));
+        }
       } else {
-        const [saved] = await saveEntry(entry);
-        setEntries(prev => [saved, ...prev].sort((a,b) => b.date.localeCompare(a.date)));
+        const [saved] = await saveEntry(entry, editingId);
+        if (editingId) {
+          setEntries(prev => prev.map(item => item.id === editingId ? saved : item).sort((a,b) => b.date.localeCompare(a.date)));
+        } else {
+          setEntries(prev => [saved, ...prev].sort((a,b) => b.date.localeCompare(a.date)));
+        }
       }
       setForm(BLANK);
+      setEditingId(null);
       setSaveOk(true);
       setTimeout(() => setSaveOk(false), 4000);
     } catch(e) {
@@ -405,7 +467,7 @@ export default function KpopArchive() {
           <div>
             {IS_DEMO && (
               <div style={{ fontSize:10, color:"#FBBF24", background:"rgba(251,191,36,0.08)", border:"1px solid rgba(251,191,36,0.2)", padding:"2px 8px", borderRadius:4, display:"inline-block", marginBottom:5 }}>
-                DEMO MODE · fill in SUPABASE_URL &amp; KEY to go live
+                DEMO MODE · fill in SUPABASE_URL & KEY to go live
               </div>
             )}
             <div style={{ fontSize:10, letterSpacing:"0.14em", color:"#40405A", textTransform:"uppercase", marginBottom:2 }}>Media Archive</div>
@@ -501,7 +563,6 @@ export default function KpopArchive() {
                             <p style={{ color:"#7878A8", fontSize:13, lineHeight:1.65, margin:"0 0 12px" }}>{entry.description}</p>
                           )}
 
-                          {/* INJECTED MULTI-MEDIA INSTANTIATION */}
                           <MediaGrid mediaUrls={entry.media} />
 
                           {(entry.platforms||[]).length > 0 && (
@@ -527,6 +588,24 @@ export default function KpopArchive() {
                               </span>
                             ))}
                           </div>
+
+                          {/* INJECTED ADMIN EDIT/DELETE ACTION PANEL CONTROLS */}
+                          {unlocked && (
+                            <div style={{ display:"flex", gap:8, borderTop:"1px solid #161626", marginTop:14, paddingTop:12 }} onClick={e=>e.stopPropagation()}>
+                              <button 
+                                onClick={() => triggerEdit(entry)}
+                                style={{ flex: 1, background: "rgba(167, 139, 250, 0.1)", border: "1px solid rgba(167, 139, 250, 0.3)", borderRadius: 6, color: "#A78BFA", fontSize: 11, fontWeight: 700, padding: "6px 10px", cursor: "pointer" }}
+                              >
+                                ✏️ Edit Entry
+                              </button>
+                              <button 
+                                onClick={(e) => triggerDelete(e, entry.id)}
+                                style={{ background: "rgba(248, 113, 113, 0.1)", border: "1px solid rgba(248, 113, 113, 0.3)", borderRadius: 6, color: "#F87171", fontSize: 11, fontWeight: 700, padding: "6px 12px", cursor: "pointer" }}
+                              >
+                                🗑️ Delete
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -571,8 +650,16 @@ export default function KpopArchive() {
           ) : (
             <div>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22 }}>
-                <div style={{ fontWeight:700, fontSize:15, color:"#D0D0F0" }}>Add New Entry</div>
-                <div style={{ fontSize:11, color:"#40405A" }}>{entries.length} entries total</div>
+                <div style={{ fontWeight:700, fontSize:15, color:"#D0D0F0" }}>
+                  {editingId ? "⚙️ Edit Existing Entry" : "Add New Entry"}
+                </div>
+                {editingId ? (
+                  <button onClick={() => { setForm(BLANK); setEditingId(null); }} style={{ background:"#1F1F35", border:"none", borderRadius:6, color:"#9090C0", padding:"4px 8px", fontSize:11, cursor:"pointer" }}>
+                    Cancel Edit
+                  </button>
+                ) : (
+                  <div style={{ fontSize:11, color:"#40405A" }}>{entries.length} entries total</div>
+                )}
               </div>
 
               {saveOk && (
@@ -616,7 +703,6 @@ export default function KpopArchive() {
                   <textarea value={form.description} onChange={e=>set("description",e.target.value)} placeholder="What happened? Context, view counts, notable moments…" rows={3} style={{ ...inp, resize:"vertical", lineHeight:1.55 }} />
                 </div>
 
-                {/* INJECTED NEW MEDIA LINK TEXT INPUT CONTAINER ROW */}
                 <div>
                   <label style={lbl}>Gallery Grid Media Links <span style={{ color:"#303050", fontWeight:400 }}>(comma-separated URLs)</span></label>
                   <input value={form.media} onChange={e=>set("media",e.target.value)} placeholder="Direct image links (.jpg/.png), raw videos (.mp4), or platform links to embed" style={inp} />
@@ -655,7 +741,7 @@ export default function KpopArchive() {
                   opacity: (saving || !form.title || !form.date) ? 0.4 : 1,
                   cursor: (saving || !form.title || !form.date) ? "not-allowed" : "pointer",
                 }}>
-                  {saving ? "Saving…" : "Save Entry to Archive"}
+                  {saving ? "Saving Changes…" : editingId ? "Update Archive Entry" : "Save Entry to Archive"}
                 </button>
               </div>
             </div>

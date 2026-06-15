@@ -80,16 +80,27 @@ async function deleteEntryFromDb(id) {
 }
 
 async function uploadMediaFile(file) {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/archive-media/${fileName}`, {
+  // 1. Replace the text below with your actual ImgBB API Key
+  const IMGBB_API_KEY = "78818f2ff19e70e0537f74fa7e429b23"; 
+  
+  // 2. Prepare the file data for ImgBB
+  const formData = new FormData();
+  formData.append("image", file);
+
+  // 3. Send it directly to ImgBB's upload servers
+  const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
     method: "POST",
-    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": file.type },
-    body: file,
+    body: formData,
   });
-  if (!res.ok) throw new Error("Failed to upload file");
-  return `${SUPABASE_URL}/storage/v1/object/public/archive-media/${fileName}`;
+
+  if (!res.ok) throw new Error("ImgBB upload failed");
+  
+  const data = await res.json();
+  
+  // 4. Return the exact "Direct Link" your gallery needs
+  return data.data.url; 
 }
+
 
 // ================================================================
 //  SECTION E · SMALL HELPER FUNCTIONS

@@ -80,27 +80,16 @@ async function deleteEntryFromDb(id) {
 }
 
 async function uploadMediaFile(file) {
-  // 1. Replace the text below with your actual ImgBB API Key
-  const IMGBB_API_KEY = "78818f2ff19e70e0537f74fa7e429b23"; 
-  
-  // 2. Prepare the file data for ImgBB
-  const formData = new FormData();
-  formData.append("image", file);
-
-  // 3. Send it directly to ImgBB's upload servers
-  const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/archive-media/${fileName}`, {
     method: "POST",
-    body: formData,
+    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": file.type },
+    body: file,
   });
-
-  if (!res.ok) throw new Error("ImgBB upload failed");
-  
-  const data = await res.json();
-  
-  // 4. Return the exact "Direct Link" your gallery needs
-  return data.data.url; 
+  if (!res.ok) throw new Error("Failed to upload file");
+  return `${SUPABASE_URL}/storage/v1/object/public/archive-media/${fileName}`;
 }
-
 
 // ================================================================
 //  SECTION E · SMALL HELPER FUNCTIONS
@@ -127,10 +116,10 @@ function groupByMonth(entries) {
 }
 
 // ================================================================
-//  SECTION F · UNIVERSAL MEDIA GRID + FULL LIGHTBOX
+//  SECTION F · UNIVERSAL MEDIA GRID + SCROLLABLE ALBUM OVERLAY
 // ================================================================
 const MediaGrid = ({ mediaUrls }) => {
-  const [activeIndex, setActiveIndex] = useState(null);
+  const [showAlbum, setShowAlbum] = useState(false);
 
   if (!mediaUrls || mediaUrls.length === 0 || mediaUrls[0] === "") return null;
 
@@ -144,94 +133,90 @@ const MediaGrid = ({ mediaUrls }) => {
   const getTikTokId = (url) => { const match = (url||"").match(/(?:tiktok\.com)\/@[\w.-]+\/video\/(\d+)/i); return match ? match[1] : null; };
   const isRawVideo = (url) => /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test((url||"").trim());
 
-  const handlePrev = (e) => { e.stopPropagation(); if (activeIndex > 0) setActiveIndex(activeIndex - 1); };
-  const handleNext = (e) => { e.stopPropagation(); if (activeIndex < mediaUrls.length - 1) setActiveIndex(activeIndex + 1); };
+  // Renders individual items inside grids smoothly
+  const renderMediaItem = (url) => {
+    const ytId = getYouTubeId(url);
+    const tweetId = getTwitterId(url);
+    const igId = getInstagramId(url);
+    const ttId = getTikTokId(url);
+    const isVid = isRawVideo(url);
+
+    if (ytId) {
+      return <iframe src={`https://www.youtube.com/embed/${ytId}`} style={{ width: "100%", height: "100%", border: "none" }} allowFullScreen />;
+    } else if (tweetId) {
+      return <iframe src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark`} style={{ width: "100%", height: "100%", border: "none" }} />;
+    } else if (igId) {
+      return <iframe src={`https://www.instagram.com/p/${igId}/embed/captioned/`} style={{ width: "100%", height: "100%", border: "none", background: "#FFF" }} scrolling="no" />;
+    } else if (ttId) {
+      return <iframe src={`https://www.tiktok.com/embed/v2/${ttId}`} style={{ width: "100%", height: "100%", border: "none" }} />;
+    } else if (isVid) {
+      return <video src={url.trim()} controls style={{ width: "100%", height: "100%", objectFit: "contain", background: "#000" }} />;
+    } else {
+      return <img src={url.trim()} alt="Archive item" style={{ width: "100%", height: "100%", objectFit: "contain", background: "#000" }} onError={(e) => { e.target.src = 'https://placehold.co/400x400?text=Image+Unavailable'; }} />;
+    }
+  };
 
   return (
     <div style={{ marginTop: 14, marginBottom: 6 }}>
-      {/* GRID VIEW */}
+      {/* TIMELINE PREVIEW (3-COLUMN FLAT ROW) */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
         {mediaUrls.slice(0, 3).map((url, index) => {
           const ytId = getYouTubeId(url);
-          const tweetId = getTwitterId(url);
-          const igId = getInstagramId(url);
-          const ttId = getTikTokId(url);
           const isVid = isRawVideo(url);
-          const isVideoPlatform = ytId || tweetId || igId || ttId || isVid;
           const isLastVisible = index === 2;
           const remainingCount = mediaUrls.length - 3;
-          
-          let platformLabel = "Video";
-          if (tweetId) platformLabel = "Twitter";
-          if (igId) platformLabel = "Instagram";
-          if (ttId) platformLabel = "TikTok";
 
           return (
-            <div key={index} onClick={(e) => { e.stopPropagation(); setActiveIndex(index); }}
+            <div key={index} onClick={(e) => { e.stopPropagation(); setShowAlbum(true); }}
               style={{ position: "relative", aspectRatio: "1 / 1", background: "#121225", borderRadius: 8, overflow: "hidden", cursor: "pointer", border: "1px solid #202035" }}>
+              
               {ytId ? (
                 <img src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`} alt="YT Thumb" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : isVid ? (
                 <video src={url.trim()} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted preload="metadata" />
-              ) : (tweetId || igId || ttId) ? (
+              ) : (getTwitterId(url) || getInstagramId(url) || getTikTokId(url)) ? (
                 <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#1b1b3a" }}>
-                  <span style={{ fontSize: 11, color: "#A0A0C0", fontWeight: "600" }}>{platformLabel}</span>
+                  <span style={{ fontSize: 11, color: "#A0A0C0", fontWeight: "600" }}>Social Clip</span>
                 </div>
               ) : (
-                <img src={url.trim()} alt="Archive" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { e.target.src = 'https://placehold.co/400x400?text=Error'; }} />
+                <img src={url.trim()} alt="Archive" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               )}
 
-              {isVideoPlatform && !isLastVisible && (
-                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.2)" }}>
-                  <div style={{ background: "#A855F7", padding: 8, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}><svg style={{ width: 12, height: 12, fill: "#FFF" }} viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg></div>
+              {/* +More Grid Prompt Overlay */}
+              {isLastVisible && remainingCount > 0 ? (
+                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#FFF", fontWeight: "bold" }}>
+                  <span style={{ fontSize: 18, color: "#A78BFA" }}>+{remainingCount}</span>
+                  <span style={{ fontSize: 9, textTransform: "uppercase", color: "#B0B0C5", letterSpacing: "0.05em", marginTop: 2 }}>View Album</span>
                 </div>
-              )}
-
-              {isLastVisible && remainingCount > 0 && (
-                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#FFF", fontWeight: "bold" }}>
-                  <span style={{ fontSize: 16 }}>+{remainingCount}</span>
-                  <span style={{ fontSize: 9, textTransform: "uppercase", color: "#B0B0C5" }}>More</span>
-                </div>
+              ) : isLastVisible && (
+                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }} />
               )}
             </div>
           );
         })}
       </div>
 
-      {/* FULL LIGHTBOX */}
-      {activeIndex !== null && (() => {
-        const currentUrl = mediaUrls[activeIndex];
-        const ytId = getYouTubeId(currentUrl);
-        const tweetId = getTwitterId(currentUrl);
-        const igId = getInstagramId(currentUrl);
-        const ttId = getTikTokId(currentUrl);
-        const isVid = isRawVideo(currentUrl);
-        const isVerticalEmbed = igId || ttId || tweetId;
-
-        return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.92)", padding: 16, backdropFilter: "blur(8px)" }} onClick={() => setActiveIndex(null)}>
-            <button style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: "#A0A0C0", fontSize: 36, cursor: "pointer", zIndex: 120 }} onClick={() => setActiveIndex(null)}>×</button>
-            {activeIndex > 0 && <button onClick={handlePrev} style={{ position: "absolute", left: 16, zIndex: 110, background: "rgba(25,25,40,0.6)", border: "none", color: "#FFF", padding: "12px 16px", borderRadius: "50%", cursor: "pointer" }}>❮</button>}
-            {activeIndex < mediaUrls.length - 1 && <button onClick={handleNext} style={{ position: "absolute", right: 16, zIndex: 110, background: "rgba(25,25,40,0.6)", border: "none", color: "#FFF", padding: "12px 16px", borderRadius: "50%", cursor: "pointer" }}>❯</button>}
-
-            <div style={{ position: "relative", width: "100%", maxWidth: isVerticalEmbed ? 480 : 860, aspectRatio: isVerticalEmbed ? "auto" : "16 / 9", height: isVerticalEmbed ? "80vh" : "auto", display: "flex", alignItems: "center", justifyContent: "center", background: "#000", borderRadius: 12, overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
-              {ytId ? (
-                <iframe src={`https://www.youtube.com/embed/${ytId}?autoplay=1`} style={{ width: "100%", height: "100%", border: "none" }} allow="autoplay; encrypted-media" allowFullScreen />
-              ) : tweetId ? (
-                <iframe src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark`} style={{ width: "100%", height: "100%", border: "none" }} />
-              ) : igId ? (
-                <iframe src={`https://www.instagram.com/p/${igId}/embed/captioned/`} style={{ width: "100%", height: "100%", border: "none", background: "#FFF" }} scrolling="no" />
-              ) : ttId ? (
-                <iframe src={`https://www.tiktok.com/embed/v2/${ttId}`} style={{ width: "100%", height: "100%", border: "none" }} />
-              ) : isVid ? (
-                <video src={currentUrl.trim()} controls autoPlay style={{ maxWidth: "100%", maxHeight: "100%" }} />
-              ) : (
-                <img src={currentUrl.trim()} alt="Display Panel" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
-              )}
-            </div>
+      {/* FULL SCROLLABLE ALBUM MODAL */}
+      {showAlbum && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(6,6,12,0.95)", padding: 20, backdropFilter: "blur(12px)" }} onClick={() => setShowAlbum(false)}>
+          <div style={{ position: "absolute", top: 16, right: 20, display: "flex", alignItems: "center", gap: 14, zIndex: 120 }}>
+            <span style={{ fontSize: 13, color: "#707090", fontWeight: 600 }}>{mediaUrls.length} Media Items</span>
+            <button style={{ background: "rgba(255,255,255,0.06)", border: "none", color: "#E4E4F4", width: 32, height: 32, borderRadius: "50%", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowAlbum(false)}>×</button>
           </div>
-        );
-      })()}
+
+          {/* Scrollable Gallery Container */}
+          <div style={{ width: "100%", maxWidth: 1000, maxHeight: "85vh", overflowY: "auto", paddingRight: 6, display: "grid", gridTemplateColumns: mediaUrls.length === 1 ? "1fr" : "repeat(auto-fit, minmax(340px, 1fr))", gap: 16 }} onClick={(e) => e.stopPropagation()}>
+            {mediaUrls.map((url, index) => {
+              const isSocial = getInstagramId(url) || getTikTokId(url) || getTwitterId(url);
+              return (
+                <div key={index} style={{ background: "#0C0C14", border: "1px solid #1E1E30", borderRadius: 12, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", height: isSocial ? 520 : 280, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
+                  {renderMediaItem(url)}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -274,7 +259,7 @@ export default function KpopArchive() {
     }
   }, []);
 
-  // ADVANCED SEARCH: Filters by title, description, era, and tags
+  // ADVANCED SEARCH
   const filtered = useMemo(() => entries.filter(e => {
     const matchCat   = activeCat === "all" || e.category === activeCat;
     const matchYear  = filterYear === "all" || (e.date && e.date.startsWith(filterYear));
@@ -368,7 +353,7 @@ export default function KpopArchive() {
   const btn  = (active) => ({ padding:"8px 16px", borderRadius:8, border:"none", cursor:"pointer", fontSize:13, fontWeight:600, background: active ? "#A78BFA" : "#13131F", color: active ? "#0A0A0F" : "#50508A" });
 
   return (
-    <div style={{ minHeight:"100vh", background:"#08080F", color:"#E4E4F4", fontFamily:"'Inter','Helvetica Neue',sans-serif", fontSize:14 }}>
+    <div style={{ minHeight:"100vh", background:"#08080F", color:"#E4E4F4", fontFamily:"sans-serif", fontSize:14 }}>
 
       {/* HEADER & FILTERS */}
       <div style={{ borderBottom:"1px solid #18182A", padding:"16px 22px 12px", position:"sticky", top:0, zIndex:10, background:"rgba(8,8,15,0.96)", backdropFilter:"blur(14px)" }}>
@@ -376,7 +361,7 @@ export default function KpopArchive() {
           <div>
             {IS_DEMO && (
               <div style={{ fontSize:10, color:"#FBBF24", background:"rgba(251,191,36,0.08)", border:"1px solid rgba(251,191,36,0.2)", padding:"2px 8px", borderRadius:4, display:"inline-block", marginBottom:5 }}>
-                DEMO MODE · fill in SUPABASE_URL & KEY to go live
+                DEMO MODE · Live connection requires SUPABASE configuration
               </div>
             )}
             <div style={{ fontSize:10, letterSpacing:"0.14em", color:"#40405A", textTransform:"uppercase", marginBottom:2 }}>Media Archive</div>
@@ -436,7 +421,7 @@ export default function KpopArchive() {
           )}
 
           {grouped.map(grp => (
-            <div key={`${grp.year}-${grp.month}`} id={`timeline-${grp.year}-${grp.month}`} style={{ marginBottom:28 }}>
+            <div key={`${grp.year}-${grp.month}`} style={{ marginBottom:28 }}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:11 }}>
                 <div style={{ fontSize:10, fontWeight:800, color:"#404068", textTransform:"uppercase", minWidth:24 }}>{MONTH_NAMES[parseInt(grp.month, 10)]}</div>
                 <div style={{ fontSize:16, fontWeight:800, color:"#9090C0", letterSpacing:"-0.02em" }}>{grp.year}</div>
@@ -471,7 +456,7 @@ export default function KpopArchive() {
                           <MediaGrid mediaUrls={entry.media} />
 
                           {(entry.platforms||[]).length > 0 && (
-                            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop: 12, marginBottom:(entry.tags||[]).length?10:0 }}>
+                            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop: 14, marginBottom:(entry.tags||[]).length?10:0 }}>
                               {entry.platforms.map((p,i) => {
                                 const pm = PLATFORMS[p.type] || { label:p.type, color:"#888", bg:"#222" };
                                 return (
@@ -522,14 +507,14 @@ export default function KpopArchive() {
         </div>
       )}
 
-      {/* ADMIN VIEW - LINK FIRST MEDIA */}
+      {/* ADMIN VIEW */}
       {view === "admin" && (
         <div style={{ maxWidth:580, margin:"0 auto", padding:"30px 18px 60px" }}>
           {!unlocked ? (
             <div style={{ background:"#0C0C18", border:"1px solid #1A1A2E", borderRadius:14, padding:"36px 28px", textAlign:"center" }}>
               <div style={{ fontSize:30, marginBottom:10 }}>🔐</div>
               <div style={{ fontWeight:700, fontSize:15, color:"#D0D0F0", marginBottom:4 }}>Admin Access</div>
-              <div style={{ color:"#50508A", fontSize:13, marginBottom:22 }}>Enter your password to manage entries.</div>
+              <div style={{ color:"#50508A", fontSize:13, marginBottom:22 }}>Enter password to manage entries.</div>
               <input type="password" value={pwInput} onChange={e=>setPwInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&tryUnlock()} placeholder="Password" style={{ ...inp, textAlign:"center", marginBottom:10 }} />
               {pwError && <div style={{ color:"#F87171", fontSize:12, marginBottom:10 }}>Incorrect password. Try again.</div>}
               <button onClick={tryUnlock} style={{ ...btn(true), width:"100%", padding:10, fontSize:14 }}>Unlock</button>
@@ -538,9 +523,9 @@ export default function KpopArchive() {
             <div>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:22 }}>
                 <div style={{ fontWeight:700, fontSize:15, color:"#D0D0F0" }}>{editingId ? "⚙️ Edit Existing Entry" : "Add New Entry"}</div>
-                {editingId ? (
+                {editingId && (
                   <button onClick={() => { setForm(BLANK); setEditingId(null); }} style={{ background:"#1F1F35", border:"none", borderRadius:6, color:"#9090C0", padding:"4px 8px", fontSize:11, cursor:"pointer" }}>Cancel Edit</button>
-                ) : <div style={{ fontSize:11, color:"#40405A" }}>{entries.length} entries total</div>}
+                )}
               </div>
 
               {saveOk && <div style={{ background:"rgba(52,211,153,0.08)", border:"1px solid rgba(52,211,153,0.25)", borderRadius:8, padding:"10px 14px", marginBottom:16, color:"#34D399", fontSize:13 }}>✓ Entry saved! It will appear in the archive now.</div>}
@@ -549,7 +534,7 @@ export default function KpopArchive() {
               <div style={{ display:"flex", flexDirection:"column", gap:15 }}>
                 <div>
                   <label style={lbl}>Title *</label>
-                  <input value={form.title} onChange={e=>set("title",e.target.value)} placeholder="e.g. ECLIPSE – Title Track MV" style={inp} />
+                  <input value={form.title} onChange={e=>set("title",e.target.value)} placeholder="e.g. Accendio Stage Performance" style={inp} />
                 </div>
 
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
@@ -567,25 +552,25 @@ export default function KpopArchive() {
 
                 <div>
                   <label style={lbl}>Era / Comeback <span style={{ color:"#303050", fontWeight:400 }}>(optional)</span></label>
-                  <input value={form.era} onChange={e=>set("era",e.target.value)} placeholder="e.g. MOONRISE, PRISM — or leave blank" style={inp} />
+                  <input value={form.era} onChange={e=>set("era",e.target.value)} placeholder="e.g. Accendio" style={inp} />
                 </div>
 
                 <div>
                   <label style={lbl}>Description <span style={{ color:"#303050", fontWeight:400 }}>(optional)</span></label>
-                  <textarea value={form.description} onChange={e=>set("description",e.target.value)} placeholder="What happened? Context, view counts, notable moments…" rows={3} style={{ ...inp, resize:"vertical", lineHeight:1.55 }} />
+                  <textarea value={form.description} onChange={e=>set("description",e.target.value)} placeholder="Context, details, or highlights..." rows={3} style={{ ...inp, resize:"vertical", lineHeight:1.55 }} />
                 </div>
 
-                {/* MEDIA: LINK FIRST */}
+                {/* MEDIA INPUT */}
                 <div>
                   <label style={lbl}>Gallery Media (Links & Uploads)</label>
                   <input 
                     value={form.media} 
                     onChange={e => set("media", e.target.value)} 
-                    placeholder="Paste YouTube, Instagram, TikTok, or direct image URL..." 
+                    placeholder="Paste YouTube, ImgBB, or direct links..." 
                     style={{ ...inp, marginBottom: 8 }} 
                   />
                   <label style={{ display: "block", textAlign: "center", padding: "10px", border: "1px dashed #222235", borderRadius: 8, cursor: "pointer", color: "#50508A", fontSize: 12 }}>
-                    {saving ? "Uploading..." : "📁 Upload a Rare Photo (Uses Storage)"}
+                    {saving ? "Uploading..." : "📁 Upload File (Uses Storage)"}
                     <input 
                       type="file" 
                       accept="image/*,video/mp4,video/webm"
@@ -603,14 +588,11 @@ export default function KpopArchive() {
                       }} 
                     />
                   </label>
-                  <p style={{ fontSize: 10, color: "#40405A", marginTop: 6 }}>
-                    * Tip: Use YouTube/social links for videos to keep your 1GB free storage empty.
-                  </p>
                 </div>
 
                 <div>
                   <label style={lbl}>Tags <span style={{ color:"#303050", fontWeight:400 }}>(comma-separated)</span></label>
-                  <input value={form.tags} onChange={e=>set("tags",e.target.value)} placeholder="MV, title track, MOONRISE, Inkigayo" style={inp} />
+                  <input value={form.tags} onChange={e=>set("tags",e.target.value)} placeholder="MV, title track, Live" style={inp} />
                 </div>
 
                 <div>
@@ -622,7 +604,7 @@ export default function KpopArchive() {
                           {PLATFORM_KEYS.map(k => <option key={k} value={k}>{PLATFORMS[k].label}</option>)}
                         </select>
                         <input value={p.url} onChange={e=>setPlatform(i,"url",e.target.value)} placeholder="Paste URL…" style={inp} />
-                        <input value={p.label} onChange={e=>setPlatform(i,"label",e.target.value)} placeholder="e.g. MV" style={inp} />
+                        <input value={p.label} onChange={e=>setPlatform(i,"label",e.target.value)} placeholder="e.g. Stage" style={inp} />
                         {form.platforms.length > 1 && (
                           <button onClick={()=>setForm(f=>({...f,platforms:f.platforms.filter((_,j)=>j!==i)}))} style={{ ...btn(false), padding:"8px 10px", color:"#F87171" }}>✕</button>
                         )}

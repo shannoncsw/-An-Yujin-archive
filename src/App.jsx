@@ -100,7 +100,7 @@ function niceDate(d) {
   const parts = d.split("-");
   if (parts.length !== 3) return d;
   const [y, m, day] = parts;
-  return `${parseInt(day)} ${MONTH_NAMES[parseInt(m)] || ""} ${y}`;
+  return `${parseInt(day, 10)} ${MONTH_NAMES[parseInt(m, 10)] || ""} ${y}`;
 }
 
 function groupByMonth(entries) {
@@ -117,7 +117,7 @@ function groupByMonth(entries) {
 }
 
 // ================================================================
-//  NEW COMPONENT · UNIVERSAL MEDIA GRID + LIGHTBOX SYSTEM
+//  COMPONENT · UNIVERSAL MEDIA GRID + LIGHTBOX SYSTEM
 // ================================================================
 const MediaGrid = ({ mediaUrls }) => {
   const [activeIndex, setActiveIndex] = useState(null);
@@ -199,7 +199,7 @@ const MediaGrid = ({ mediaUrls }) => {
             >
               {ytId ? (
                 <img 
-                  src={`https://img.youtube.com/vi/$${ytId}/hqdefault.jpg`} 
+                  src={`http://img.youtube.com/vi/${ytId}/hqdefault.jpg`} 
                   alt="YouTube Thumbnail" 
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
@@ -284,7 +284,7 @@ const MediaGrid = ({ mediaUrls }) => {
               onClick={(e) => e.stopPropagation()}
             >
               {ytId ? (
-                <iframe src={`https://www.youtube.com/embed/$${ytId}?autoplay=1`} style={{ width: "100%", height: "100%", border: "none" }} allow="autoplay; encrypted-media" allowFullScreen />
+                <iframe src={`https://www.youtube.com/embed/${ytId}?autoplay=1`} style={{ width: "100%", height: "100%", border: "none" }} allow="autoplay; encrypted-media" allowFullScreen />
               ) : tweetId ? (
                 <iframe src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark`} style={{ width: "100%", height: "100%", border: "none" }} />
               ) : igId ? (
@@ -314,9 +314,11 @@ export default function KpopArchive() {
   const [loading, setLoading]     = useState(true);
   const [loadError, setLoadError] = useState(null);
 
-  const [activeCat, setActiveCat] = useState("all");
-  const [search, setSearch]       = useState("");
-  const [expandedId, setExpandedId] = useState(null);
+  const [activeCat, setActiveCat]     = useState("all");
+  const [search, setSearch]           = useState("");
+  const [filterYear, setFilterYear]   = useState("all");
+  const [filterMonth, setFilterMonth] = useState("all");
+  const [expandedId, setExpandedId]   = useState(null);
 
   const [unlocked, setUnlocked]       = useState(false);
   const [pwInput, setPwInput]         = useState("");
@@ -325,8 +327,6 @@ export default function KpopArchive() {
   const [saving, setSaving]           = useState(false);
   const [saveOk, setSaveOk]           = useState(false);
   const [saveError, setSaveError]     = useState(null);
-
-  // New tracking state for edits
   const [editingId, setEditingId]     = useState(null);
 
   const BLANK = {
@@ -349,15 +349,18 @@ export default function KpopArchive() {
   }, []);
 
   const filtered = useMemo(() => entries.filter(e => {
-    const matchCat  = activeCat === "all" || e.category === activeCat;
-    const q         = search.toLowerCase();
-    const matchText = !q ||
+    const matchCat   = activeCat === "all" || e.category === activeCat;
+    const matchYear  = filterYear === "all" || (e.date && e.date.startsWith(filterYear));
+    const matchMonth = filterMonth === "all" || (e.date && e.date.split("-")[1] === filterMonth);
+    const q          = search.toLowerCase();
+    const matchText  = !q ||
       e.title.toLowerCase().includes(q) ||
       (e.description||"").toLowerCase().includes(q) ||
       (e.era||"").toLowerCase().includes(q) ||
       (e.tags||[]).some(t => t.toLowerCase().includes(q));
-    return matchCat && matchText;
-  }), [entries, activeCat, search]);
+      
+    return matchCat && matchYear && matchMonth && matchText;
+  }), [entries, activeCat, search, filterYear, filterMonth]);
 
   const grouped = useMemo(() => groupByMonth(filtered), [filtered]);
 
@@ -376,7 +379,6 @@ export default function KpopArchive() {
     });
   }
 
-  // Load a post configuration into form values for editing
   function triggerEdit(entry) {
     setEditingId(entry.id);
     setForm({
@@ -394,7 +396,6 @@ export default function KpopArchive() {
     setView("admin");
   }
 
-  // Handle direct deletion process
   async function triggerDelete(e, id) {
     e.stopPropagation();
     if (!window.confirm("Are you completely sure you want to delete this entry? This action cannot be undone.")) return;
@@ -500,6 +501,31 @@ export default function KpopArchive() {
               );
             })}
           </div>
+
+          {/* YEAR & MONTH FILTERS */}
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <select 
+              value={filterYear} 
+              onChange={e => setFilterYear(e.target.value)} 
+              style={{ ...inp, width: "auto", padding: "6px 12px", fontSize: 12, background: "rgba(20,20,35,0.6)", borderRadius: 20, cursor: "pointer", color: filterYear === "all" ? "#A0A0C0" : "#A78BFA", border: filterYear === "all" ? "1px solid #222235" : "1px solid #A78BFA" }}
+            >
+              <option value="all">All Years</option>
+              {Array.from({length: new Date().getFullYear() - 2018 + 1}, (_, i) => new Date().getFullYear() - i).map(y => (
+                <option key={y} value={y.toString()}>{y}</option>
+              ))}
+            </select>
+
+            <select 
+              value={filterMonth} 
+              onChange={e => setFilterMonth(e.target.value)} 
+              style={{ ...inp, width: "auto", padding: "6px 12px", fontSize: 12, background: "rgba(20,20,35,0.6)", borderRadius: 20, cursor: "pointer", color: filterMonth === "all" ? "#A0A0C0" : "#A78BFA", border: filterMonth === "all" ? "1px solid #222235" : "1px solid #A78BFA" }}
+            >
+              <option value="all">All Months</option>
+              {MONTH_NAMES.map((m, i) => i !== 0 && (
+                <option key={i} value={i.toString().padStart(2, '0')}>{m}</option>
+              ))}
+            </select>
+          </div>
         </>}
       </div>
 
@@ -516,9 +542,9 @@ export default function KpopArchive() {
           )}
 
           {grouped.map(grp => (
-            <div key={`${grp.year}-${grp.month}`} style={{ marginBottom:28 }}>
+            <div key={`${grp.year}-${grp.month}`} id={`timeline-${grp.year}-${grp.month}`} style={{ marginBottom:28 }}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:11 }}>
-                <div style={{ fontSize:10, fontWeight:800, color:"#404068", textTransform:"uppercase", minWidth:24 }}>{MONTH_NAMES[parseInt(grp.month)]}</div>
+                <div style={{ fontSize:10, fontWeight:800, color:"#404068", textTransform:"uppercase", minWidth:24 }}>{MONTH_NAMES[parseInt(grp.month, 10)]}</div>
                 <div style={{ fontSize:16, fontWeight:800, color:"#9090C0", letterSpacing:"-0.02em" }}>{grp.year}</div>
                 <div style={{ flex:1, height:1, background:"#16162A" }} />
                 <div style={{ fontSize:10, color:"#30304A" }}>{grp.entries.length} item{grp.entries.length!==1?"s":""}</div>
@@ -579,7 +605,7 @@ export default function KpopArchive() {
                               })}
                             </div>
                           )}
-                          <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+                          <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginTop: 8 }}>
                             {(entry.tags||[]).map(tag => (
                               <span key={tag}
                                 onClick={e=>{ e.stopPropagation(); setSearch(tag); }}
@@ -589,7 +615,6 @@ export default function KpopArchive() {
                             ))}
                           </div>
 
-                          {/* INJECTED ADMIN EDIT/DELETE ACTION PANEL CONTROLS */}
                           {unlocked && (
                             <div style={{ display:"flex", gap:8, borderTop:"1px solid #161626", marginTop:14, paddingTop:12 }} onClick={e=>e.stopPropagation()}>
                               <button 

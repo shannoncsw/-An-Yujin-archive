@@ -44,7 +44,7 @@ const DEMO_DATA = [
 ];
 
 // ================================================================
-//  SECTION E · SUPABASE HELPERS
+//  SECTION E · SUPABASE HELPERS & UPLOAD
 // ================================================================
 const IS_DEMO = SUPABASE_URL.includes("YOUR_PROJECT_ID");
 
@@ -86,6 +86,28 @@ async function deleteEntryFromDb(id) {
     },
   });
   if (!res.ok) throw new Error(`Could not delete: ${res.status}`);
+}
+
+async function uploadMediaFile(file) {
+  // Create a unique file name
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+  // Upload to Supabase Storage bucket 'archive-media'
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/archive-media/${fileName}`, {
+    method: "POST",
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": file.type,
+    },
+    body: file,
+  });
+
+  if (!res.ok) throw new Error("Failed to upload file");
+
+  // Return the public URL
+  return `${SUPABASE_URL}/storage/v1/object/public/archive-media/${fileName}`;
 }
 
 // ================================================================
@@ -729,8 +751,38 @@ export default function KpopArchive() {
                 </div>
 
                 <div>
-                  <label style={lbl}>Gallery Grid Media Links <span style={{ color:"#303050", fontWeight:400 }}>(comma-separated URLs)</span></label>
-                  <input value={form.media} onChange={e=>set("media",e.target.value)} placeholder="Direct image links (.jpg/.png), raw videos (.mp4), or platform links to embed" style={inp} />
+                  <label style={lbl}>Gallery Media <span style={{ color:"#303050", fontWeight:400 }}>(Upload or paste links)</span></label>
+                  <input 
+                    type="file" 
+                    multiple 
+                    accept="image/*,video/mp4,video/webm"
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files);
+                      if (!files.length) return;
+                      
+                      setSaving(true);
+                      try {
+                        const newUrls = [];
+                        for (const file of files) {
+                          const url = await uploadMediaFile(file);
+                          newUrls.push(url);
+                        }
+                        const currentMedia = form.media ? form.media + ", " : "";
+                        set("media", currentMedia + newUrls.join(", "));
+                      } catch (err) {
+                        alert("Upload failed: " + err.message);
+                      }
+                      setSaving(false);
+                      e.target.value = ""; 
+                    }} 
+                    style={{ marginBottom: 8, color: "#9090C0", fontSize: 12, width: "100%", cursor: "pointer" }} 
+                  />
+                  <input 
+                    value={form.media} 
+                    onChange={e=>set("media",e.target.value)} 
+                    placeholder="Direct image links (.jpg), raw videos (.mp4), or platform links" 
+                    style={inp} 
+                  />
                 </div>
 
                 <div>

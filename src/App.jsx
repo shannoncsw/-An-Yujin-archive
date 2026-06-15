@@ -99,6 +99,21 @@ async function uploadMediaFile(file) {
 // ================================================================
 const MONTH_NAMES = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+// Logic to extract thumbnail URLs for various platforms
+function getSocialThumbnail(url) {
+  if (!url) return null;
+  // YouTube
+  const ytMatch = url.match(/(?:youtu\.be\/|v\/|watch\?v=)([^#\&\?]*)/);
+  if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
+  // Twitter/X (Uses an oEmbed proxy or standard preview)
+  if (url.includes('twitter.com') || url.includes('x.com')) return "https://abs.twimg.com/icons/apple-touch-icon-192x192.png";
+  // TikTok
+  if (url.includes('tiktok.com')) return "https://sf16-website-login.neutral.pstatp.com/obj/eden-va2/630440050/tiktok_logo.png";
+  // RedNote (XiaoHongShu)
+  if (url.includes('xiaohongshu') || url.includes('rednote')) return "https://s1.xiaohongshu.com/static/logo.png";
+  return null;
+}
+
 function getCat(id) { return CATEGORIES.find(c => c.id === id) || CATEGORIES[1]; }
 function niceDate(d) {
   if (!d) return "";
@@ -136,77 +151,42 @@ const MediaGrid = ({ mediaUrls }) => {
 
   if (!mediaUrls || mediaUrls.length === 0 || mediaUrls[0] === "") return null;
 
-  const getYouTubeId = (url) => {
-    if (!url) return null;
+const getYouTubeId = (url) => {
     const match = url.match(/(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*)/);
     return (match && match[1].length === 11) ? match[1] : null;
   };
-  const getTwitterId = (url) => { const match = (url||"").match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/i); return match ? match[1] : null; };
-  const getInstagramId = (url) => { const match = (url||"").match(/(?:instagram\.com)\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/i); return match ? match[1] : null; };
-  const getTikTokId = (url) => { const match = (url||"").match(/(?:tiktok\.com)\/@[\w.-]+\/video\/(\d+)/i); return match ? match[1] : null; };
-  const isRawVideo = (url) => /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test((url||"").trim());
 
-  const renderMediaItem = (url) => {
+  const renderPreview = (url) => {
     const ytId = getYouTubeId(url);
-    const tweetId = getTwitterId(url);
-    const igId = getInstagramId(url);
-    const ttId = getTikTokId(url);
-    const isVid = isRawVideo(url);
-
-    if (ytId) {
-      return <iframe src={`https://www.youtube.com/embed/${ytId}`} style={{ width: "100%", height: "100%", border: "none" }} allowFullScreen />;
-    } else if (tweetId) {
-      return <iframe src={`https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark`} style={{ width: "100%", height: "100%", border: "none" }} />;
-    } else if (igId) {
-      return <iframe src={`https://www.instagram.com/p/${igId}/embed/captioned/`} style={{ width: "100%", height: "100%", border: "none", background: "#FFF" }} scrolling="no" />;
-    } else if (ttId) {
-      return <iframe src={`https://www.tiktok.com/embed/v2/${ttId}`} style={{ width: "100%", height: "100%", border: "none" }} />;
-    } else if (isVid) {
-      return <video src={url.trim()} controls style={{ width: "100%", height: "100%", objectFit: "contain", background: "#000" }} />;
-    } else {
-      return <img src={url.trim()} alt="Archive item" style={{ width: "100%", height: "100%", objectFit: "contain", background: "#000" }} onError={(e) => { e.target.src = 'https://placehold.co/400x400?text=Image+Unavailable'; }} />;
-    }
+    const thumb = getSocialThumbnail(url);
+    
+    if (ytId) return <img src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />;
+    if (thumb) return <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#0a0a0f", backgroundImage: `url(${thumb})`, backgroundSize: "contain", backgroundPosition: "center", backgroundRepeat: "no-repeat" }} />;
+    return <img src={url.trim()} alt="Archive" style={{ width: "100%", height: "100%", objectFit: "cover" }} />;
   };
 
   return (
     <div style={{ marginTop: 14, marginBottom: 6 }}>
-      {/* TIMELINE PREVIEW (3-COLUMN FLAT ROW) */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
         {mediaUrls.slice(0, 3).map((url, index) => {
-          const ytId = getYouTubeId(url);
-          const isVid = isRawVideo(url);
           const isLastVisible = index === 2;
           const remainingCount = mediaUrls.length - 3;
-
           return (
-            <div key={index} onClick={(e) => { e.stopPropagation(); setShowAlbum(true); }}
-              style={{ position: "relative", aspectRatio: "1 / 1", background: "#121225", borderRadius: 8, overflow: "hidden", cursor: "pointer", border: "1px solid #202035" }}>
-              
-              {ytId ? (
-                <img src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`} alt="YT Thumb" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : isVid ? (
-                <video src={url.trim()} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted preload="metadata" />
-              ) : (getTwitterId(url) || getInstagramId(url) || getTikTokId(url)) ? (
-                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#1b1b3a" }}>
-                  <span style={{ fontSize: 11, color: "#A0A0C0", fontWeight: "600" }}>Social Clip</span>
-                </div>
-              ) : (
-                <img src={url.trim()} alt="Archive" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              )}
-
-              {/* +More Grid Prompt Overlay */}
-              {isLastVisible && remainingCount > 0 ? (
-                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#FFF", fontWeight: "bold" }}>
+            <div key={index} onClick={() => setShowAlbum(true)} style={{ position: "relative", aspectRatio: "1 / 1", background: "#121225", borderRadius: 8, overflow: "hidden", cursor: "pointer" }}>
+              {renderPreview(url)}
+              {isLastVisible && remainingCount > 0 && (
+                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                   <span style={{ fontSize: 18, color: "#A78BFA" }}>+{remainingCount}</span>
-                  <span style={{ fontSize: 9, textTransform: "uppercase", color: "#B0B0C5", letterSpacing: "0.05em", marginTop: 2 }}>View Album</span>
                 </div>
-              ) : isLastVisible && (
-                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }} />
               )}
             </div>
           );
         })}
       </div>
+      {/* ... (Album modal remains same as previous code) */}
+    </div>
+  );
+};
 
       {/* FULL SCROLLABLE ALBUM MODAL */}
       {showAlbum && (
